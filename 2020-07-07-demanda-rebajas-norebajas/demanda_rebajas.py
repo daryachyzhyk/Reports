@@ -1,4 +1,6 @@
-
+'''
+Calculate number of items with and without sales for specific week
+'''
 import pandas as pd
 
 import seaborn as sns
@@ -55,6 +57,7 @@ df_demanda_all['co_binary'] = df_demanda_all['date_co'].where(df_demanda_all['da
 df_demanda_co = df_demanda_all[df_demanda_all['co_binary'] == 1]
 
 df_demanda_co_rebaja = df_demanda_co.groupby(['country']).agg({'rebaja_si': 'sum', 'rebaja_no': 'sum'}).reset_index()
+
 
 
 
