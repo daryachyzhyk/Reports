@@ -1,6 +1,7 @@
 '''
 Calculate number of items with and without sales for specific week
 '''
+
 import pandas as pd
 
 import seaborn as sns
@@ -46,6 +47,9 @@ df_demanda_all = pd.read_csv(demanda_file,
 
 df_demanda_all.loc[df_demanda_all['rebaja'] > 0, 'rebaja_si'] = 1
 df_demanda_all.loc[df_demanda_all['rebaja'] == 0, 'rebaja_no'] = 1
+
+df_demanda_all.to_excel('/home/darya/Documents/Reports/2020-07-07-rebajas/envios_sin_con_rebaja.xlsx')
+
 
 #df_demanda_all_nan = df_demanda_all.fillna(0)
 
