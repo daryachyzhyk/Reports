@@ -24,10 +24,10 @@ period_in_months = 7
 date_end = datetime.datetime.strptime('2020-07-01', '%Y-%m-%d')
 
 ########
-period = datetime.timedelta(period_in_months*365/12)
+n_months = datetime.timedelta(period_in_months*365/12)
 
 
-date_start = date_end - period
+date_start = date_end - n_months
 
 
 
