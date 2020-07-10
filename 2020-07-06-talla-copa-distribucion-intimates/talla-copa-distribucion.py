@@ -1,5 +1,12 @@
 '''
+Actualizar la distrubución de tallas para la compra de intimates
+Hay que calcular el % de clientas en cada talla / copa de sujetador,
+teniendo en cuenta también el número de cajas pedidas por cada clienta,
+de forma que si las clientas por ejemplo con talla 85B, piden más cajas, que lo tenga en cuenta
 
+y lo mismo para talla de abajo
+
+Los ultimos: 7 y 12 meses
 '''
 
 import pickle
@@ -66,8 +73,14 @@ list_talla_registradas = []
 list_copa_registradas = []
 list_date_registradas = []
 
+list_box_id = []
+list_box_date = []
+
+list_bottom_size = []
+list_top_size = []
 
 
+#
 # cl = repo.clients[328009]
 # cl.profile.get_quiz_var('copa')
 # copa_key = '57'
@@ -75,24 +88,55 @@ list_date_registradas = []
 
 
 for id in repo.clients:
+    print(id)
     
-    cl_year = repo.clients[id].date_created.year
-    if (cl_year > 2016) and (repo.clients[id].profile is not None):
-        
-        # if (copa_key in repo.clients[id].profile.quiz.keys()) and (talla_key in repo.clients[id].profile.quiz.keys()):
-        list_cl_id_registradas.append(id)
-        
-        # repo global
-        list_talla_registradas.append(repo.clients[id].profile.get_quiz_var('tallaSujetador'))
-        list_copa_registradas.append(repo.clients[id].profile.get_quiz_var('copa'))
-        
-        # list_talla_registradas.append(repo.clients[id].profile.quiz['19'])
-        # list_copa_registradas.append(repo.clients[id].profile.quiz['57'])
-        list_date_registradas.append(repo.clients[id].date_created)
-        
+    #cl_year = repo.clients[id].date_created.year
+    # if (cl_year > 2016) and (repo.clients[id].profile is not None):
+    if (repo.clients[id].profile is not None) & (len(repo.clients[id].boxes) > 0):
 
 
+        for box in repo.clients[id].get_normal_boxes():
+            if box.date_created > date_start:
 
+
+                list_box_id.append(box.id)
+                list_box_date.append(box.date_created)
+        
+                # if (copa_key in repo.clients[id].profile.quiz.keys()) and (talla_key in repo.clients[id].profile.quiz.keys()):
+                list_cl_id_registradas.append(id)
+
+                # repo global
+                list_talla_registradas.append(repo.clients[id].profile.get_quiz_var('tallaSujetador'))
+                list_copa_registradas.append(repo.clients[id].profile.get_quiz_var('copa'))
+
+                list_bottom_size.append(repo.clients[id].profile.get_bottom_size())
+                list_top_size.append(repo.clients[id].profile.get_top_size())
+
+                # cl.profile.get_bottom_size()
+                # list_talla_registradas.append(repo.clients[id].profile.quiz['19'])
+                # list_copa_registradas.append(repo.clients[id].profile.quiz['57'])
+
+                #list_date_registradas.append(repo.clients[id].b.date_created)
+
+
+# repo.clients[id].get_normal_boxes()
+
+df_cl = pd.DataFrame({'id': list_cl_id_registradas,
+                      'box_id': list_box_id,
+                      'box_date': list_box_date,
+                      'tallaSujetador': list_talla_registradas,
+                      'copa': list_copa_registradas,
+                      'bottom_size': list_bottom_size,
+                      'top_size': list_top_size})
+
+
+df_copa_sujetador = df_cl.groupby(['copa', 'tallaSujetador']).agg({'box_id': 'count',
+                                                                   'id': pd.Series.nunique}).reset_index()
+
+
+df_copa_sujetador['proportion'] = df_copa_sujetador['box_id'] / df_copa_sujetador['id']
+
+df_copa_sujetador['pct'] = df_copa_sujetador['proportion'] / df_copa_sujetador['proportion'].sum() * 100
 
 
 df_all_registradas = pd.DataFrame({'date': list_date_registradas,
