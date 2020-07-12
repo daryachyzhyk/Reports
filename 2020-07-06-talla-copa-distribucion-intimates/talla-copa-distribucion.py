@@ -166,7 +166,16 @@ df_copa_bottom_size_matrix = df_copa_bottom_size.pivot(index='copa',
                                                             columns='bottom_size',
                                                             values='pct_clientas').reset_index()
 
+# save
+name_data = 'intimates_data_' + str(period_in_months) + '_lastmonths.csv'
+name_sujetador = 'intimates_copa_sujetador_' + str(period_in_months) + '_lastmonths.csv'
+name_top = 'intimates_copa_top_size_' + str(period_in_months) + '_lastmonths.csv'
+name_bottom = 'intimates_copa_bottom_size_' + str(period_in_months) + '_lastmonths.csv'
 
+df_cl.to_csv(os.path.join(path_results, name_data))
+df_copa_sujetador_matrix.to_csv(os.path.join(path_results, name_sujetador))
+df_copa_top_size_matrix.to_csv(os.path.join(path_results, name_top))
+df_copa_bottom_size_matrix.to_csv(os.path.join(path_results, name_bottom))
 
 #
 #
