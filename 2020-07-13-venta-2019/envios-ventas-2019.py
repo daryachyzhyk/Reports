@@ -25,7 +25,7 @@ query_text = 'date_ps_done >= "2019-01-01" & date_ps_done <= "2019-12-31" '
 
 df_demanda_all = pd.read_csv(demanda_file,
                            usecols=['date_ps_done', 'country', 'family_desc', 'user_id', 'box_id',
-                                    'reference', 'family', 'date_co', 'purchased', 'paid']
+                                    'reference', 'size', 'date_co', 'purchased', 'paid']
                            ).query(query_text)
 
 # df_demanda_all['date_ps_done'] = pd.to_datetime(df_demanda_all['date_ps_done'])
@@ -38,6 +38,12 @@ df_demanda_all['date_month'] = pd.to_datetime(df_demanda_all['date_ps_done']).dt
 
 df_demanda_all = df_demanda_all.dropna(subset=['family_desc', 'size'])
 
-df = df_demanda_all.groupby(['date_month', 'family_desc', 'size']).agg({'date_ps_done': 'sum',
-                                                                        'date_co': 'sum',
-                                                                        'purchased': 'sum'})
+df = df_demanda_all.groupby(['date_month', 'family_desc', 'size']).agg({'date_ps_done': 'count',
+                                                                        'date_co': 'count',
+                                                                        'purchased': 'sum'}).reset_index()
+
+df = df.rename(columns={'date_ps_done': 'envios',
+                        'date_co': 'chechouts'})
+
+df[['envios', 'chechouts', 'purchased']] = df[['envios', 'chechouts', 'purchased']].astype(int)
+df.to_csv('/home/darya/Documents/Reports/2020-07-13-venta-2019/report-venta-checkouts-purchased-2019.csv')
