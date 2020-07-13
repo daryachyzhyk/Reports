@@ -1,10 +1,10 @@
 '''
 Actualizar la distrubución de tallas para la compra de intimates
-Hay que calcular el % de clientas en cada talla / copa de sujetador,
+1. Hay que calcular el % de clientas en cada talla / copa de sujetador,
 teniendo en cuenta también el número de cajas pedidas por cada clienta,
 de forma que si las clientas por ejemplo con talla 85B, piden más cajas, que lo tenga en cuenta
-
-y lo mismo para talla de abajo
+2. y lo mismo para talla de abajo
+3. talla de arriba
 
 Los ultimos: 7 y 12 meses
 '''
@@ -121,7 +121,7 @@ for id in repo.clients:
 
 # repo.clients[id].get_normal_boxes()
 
-df_cl = pd.DataFrame({'id': list_cl_id_registradas,
+df_cl = pd.DataFrame({'client_id': list_cl_id_registradas,
                       'box_id': list_box_id,
                       'box_date': list_box_date,
                       'tallaSujetador': list_talla_registradas,
@@ -129,24 +129,24 @@ df_cl = pd.DataFrame({'id': list_cl_id_registradas,
                       'bottom_size': list_bottom_size,
                       'top_size': list_top_size})
 
-
 df_copa_sujetador = df_cl.groupby(['copa', 'tallaSujetador']).agg({'box_id': 'count',
-                                                                   'id': pd.Series.nunique}).reset_index()
+                                                                   'client_id': pd.Series.nunique}).reset_index()
+# distribution of the top and bottom sizes for the clients(without duplication) taking into account number of ordered boxe
 
-df_copa_top_size = df_cl.groupby(['copa', 'top_size']).agg({'box_id': 'count',
-                                                                   'id': pd.Series.nunique}).reset_index()
+df_top_size = df_cl.groupby(['top_size']).agg({'box_id': 'count',
+                                               'client_id': pd.Series.nunique}).reset_index()
 
-df_copa_bottom_size = df_cl.groupby(['copa', 'bottom_size']).agg({'box_id': 'count',
-                                                                   'id': pd.Series.nunique}).reset_index()
+df_bottom_size = df_cl.groupby(['bottom_size']).agg({'box_id': 'count',
+                                                     'client_id': pd.Series.nunique}).reset_index()
 
 
 # df_copa_sujetador['proportion'] = df_copa_sujetador['box_id'] / df_copa_sujetador['id']
 
 # df_copa_sujetador['pct'] = df_copa_sujetador['proportion'] / df_copa_sujetador['proportion'].sum() * 100
 
-df_copa_sujetador['pct_clientas'] = df_copa_sujetador['box_id'] / df_copa_sujetador['id'].sum() * 100
-df_copa_top_size['pct_clientas'] = df_copa_top_size['box_id'] / df_copa_top_size['id'].sum() * 100
-df_copa_bottom_size['pct_clientas'] = df_copa_bottom_size['box_id'] / df_copa_sujetador['id'].sum() * 100
+df_copa_sujetador['pct_clientas'] = df_copa_sujetador['box_id'] / df_copa_sujetador['client_id'].sum() * 100
+df_top_size['pct_clientas'] = df_top_size['box_id'] / df_top_size['client_id'].sum() * 100
+df_bottom_size['pct_clientas'] = df_bottom_size['box_id'] / df_bottom_size['client_id'].sum() * 100
 
 
 
@@ -158,24 +158,26 @@ df_copa_sujetador_matrix = df_copa_sujetador.pivot(index='copa',
                                                             values='pct_clientas').reset_index()
 
 
-df_copa_top_size_matrix = df_copa_top_size.pivot(index='copa',
-                                                            columns='top_size',
-                                                            values='pct_clientas').reset_index()
-
-df_copa_bottom_size_matrix = df_copa_bottom_size.pivot(index='copa',
-                                                            columns='bottom_size',
-                                                            values='pct_clientas').reset_index()
+# df_copa_top_size_matrix = df_copa_top_size.pivot(
+#                                                 # index='copa',
+#                                                             columns='top_size',
+#                                                             values='pct_clientas').reset_index()
+#
+# df_copa_bottom_size_matrix = df_copa_bottom_size.pivot(
+#                                                         # index='copa',
+#                                                             columns='bottom_size',
+#                                                             values='pct_clientas').reset_index()
 
 # save
 name_data = 'intimates_data_' + str(period_in_months) + '_lastmonths.csv'
 name_sujetador = 'intimates_copa_sujetador_' + str(period_in_months) + '_lastmonths.csv'
-name_top = 'intimates_copa_top_size_' + str(period_in_months) + '_lastmonths.csv'
-name_bottom = 'intimates_copa_bottom_size_' + str(period_in_months) + '_lastmonths.csv'
+name_top = 'intimates_top_size_' + str(period_in_months) + '_lastmonths.csv'
+name_bottom = 'intimates_bottom_size_' + str(period_in_months) + '_lastmonths.csv'
 
 df_cl.to_csv(os.path.join(path_results, name_data))
 df_copa_sujetador_matrix.to_csv(os.path.join(path_results, name_sujetador))
-df_copa_top_size_matrix.to_csv(os.path.join(path_results, name_top))
-df_copa_bottom_size_matrix.to_csv(os.path.join(path_results, name_bottom))
+df_top_size.to_csv(os.path.join(path_results, name_top))
+df_bottom_size.to_csv(os.path.join(path_results, name_bottom))
 
 #
 #
