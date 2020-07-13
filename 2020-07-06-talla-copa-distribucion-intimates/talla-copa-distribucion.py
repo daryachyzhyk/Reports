@@ -26,7 +26,7 @@ repo = pickle.load(open(repo_file, 'rb'))
 path_results = ('/home/darya/Documents/Reports/2020-07-06-report-size-sujetador')
 
 # indicate the period of interestin MONTHS, e.i last 7 or 12 months and END period
-period_in_months = 7
+period_in_months = 12
 
 date_end = datetime.datetime.strptime('2020-07-01', '%Y-%m-%d')
 
