@@ -9,15 +9,20 @@ import numpy as np
 
 
 demanda_file = ('/var/lib/lookiero/stock/stock_tool/demanda_preprocessed.csv')
+# demanda_file = ('/var/lib/lookiero/stock/stock_tool/demanda_20200713.csv')
 
 
 # 29.06.2020 y 05.06.2020
-query_text = 'date_ps_done >= "2020-06-29" & date_ps_done <= "2020-07-05" '
+query_text = 'date_ps_done >= "2020-07-06" & date_ps_done <= "2020-07-12" '
 
 df_demanda_all = pd.read_csv(demanda_file,
                            usecols=['date_ps_done', 'rebaja', 'country', 'family_desc', 'user_id', 'box_id',
                                     'reference', 'family', 'precio_bruto', 'precio_neto', 'date_co']
                            ).query(query_text)
+
+# df_demanda_all = pd.read_csv(demanda_file,
+#                            usecols=['date_ps_done', 'country', 'family_desc', 'reference', 'date_co']
+#                            ).query(query_text)
 
 # ['family_desc', 'user_id', 'box_id', 'reference', 'date_ps_done',
 #        'rejection_quality', 'rejection_style', 'rejection_size',
@@ -48,7 +53,7 @@ df_demanda_all = pd.read_csv(demanda_file,
 df_demanda_all.loc[df_demanda_all['rebaja'] > 0, 'rebaja_si'] = 1
 df_demanda_all.loc[df_demanda_all['rebaja'] == 0, 'rebaja_no'] = 1
 
-df_demanda_all.to_excel('/home/darya/Documents/Reports/2020-07-07-rebajas/envios_sin_con_rebaja.xlsx')
+df_demanda_all.to_excel('/home/darya/Documents/Reports/2020-07-07-rebajas/envios_sin_con_rebaja_20200706_20200712.xlsx')
 
 
 #df_demanda_all_nan = df_demanda_all.fillna(0)
