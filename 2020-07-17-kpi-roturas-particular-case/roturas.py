@@ -16,6 +16,16 @@ fecha_stock_actual_end_str = '2020-07-19'
 
 fecha_compra = '2020-06-17'
 
+#####################################################################################################################
+# path
+# stock_fecha = fecha_stock_actual.replace("-", "")
+stock_path = ('/var/lib/lookiero/stock/snapshots')
+
+productos_file = ('/var/lib/lookiero/stock/stock_tool/productos_preprocessed.csv.gz')
+
+stock_proyeccion_file = ('/var/lib/lookiero/stock/stock_tool/stuart/20200616/proyeccion_stock_todos.csv.gz')
+
+stuart_file = ()
 
 ######
 # fechas
@@ -23,11 +33,9 @@ fecha_stock_actual_start = datetime.strptime(fecha_stock_actual_start_str, '%Y-%
 fecha_stock_actual_end = datetime.strptime(fecha_stock_actual_end_str, '%Y-%m-%d')
 
 delta_fecha_stock_actual = fecha_stock_actual_end - fecha_stock_actual_start
-#####################################################################################################################
-# path
-# stock_fecha = fecha_stock_actual.replace("-", "")
-stock_path = ('/var/lib/lookiero/stock/snapshots')
 
+########################################
+# stock actual
 # stock_actual_file = []
 df_stock_all = pd.DataFrame([])
 
@@ -48,15 +56,73 @@ for i in range(delta_fecha_stock_actual.days + 1):
 
 
 
-    query_venta_text = 'real_stock > 0 and active > 0'
+    query_stock_text = 'real_stock > 0 and active > 0'
 
     df_stock_day = pd.read_csv(stock_file,
                                usecols=['reference', 'family', 'real_stock', 'active']
-                               ).query(query_venta_text)
+                               ).query(query_stock_text)
     df_stock_day['date'] = day
 
     df_stock_all = df_stock_all.append(df_stock_day)
 
+
+
+#######################################################
+# info de cada prenda
+list_reference_stock = df_stock_all["reference"].to_list()
+query_product_text = 'reference in @list_reference_stock'
+
+
+df_productos = pd.read_csv(productos_file,
+                           usecols=['reference', 'family_desc', 'size', 'clima'] # , 'clima_grupo'
+                           ).query(query_product_text)
+
+#########################################################
+# stock actual añadir familia, talla, clima
+
+df_stock_reference = pd.merge(df_stock_all, df_productos, on='reference', how='left')
+
+df_stock_familia_talla = df_stock_reference.groupby(['family_desc', 'size']).agg({'real_stock': 'sum',
+                                                                                  'date': 'last'}).reset_index()
+
+df_stock_familia_clima = df_stock_reference.groupby(['family_desc', 'clima']).agg({'real_stock': 'sum',
+                                                                                   'date': 'last'}).reset_index()
+
+df_stock_familia_talla['stock_mean'] = (df_stock_familia_talla['real_stock'] / 7)
+
+df_stock_familia_clima['stock_mean'] = (df_stock_familia_clima['real_stock'] / 7)
+
+
+# df_stock_familia_talla['stock_mean'] = (df_stock_familia_talla['real_stock'] / 7).round(0)
+# df_stock_familia_talla['stock_mean1'] = (df_stock_familia_talla['real_stock'] / 7).apply(np.ceil)
+
+
+################################################################3
+# proyeccion_stock de Stuart
+
+df_proyeccion_all = pd.read_csv(stock_proyeccion_file)
+
+
+df_proyeccion_week = df_proyeccion_all[df_proyeccion_all['week'] == fecha_stock_actual_start_str]
+
+df_proyeccion_familia_talla = df_proyeccion_week[df_proyeccion_all['caracteristica'] == 'tallas']
+
+df_proyeccion_familia_clima = df_proyeccion_week[df_proyeccion_all['caracteristica'] == 'clima_valor']
+
+df_proyeccion_familia_talla['size'] = df_proyeccion_familia_talla['clase'].str.split('-').str[1]
+
+# df_proyeccion_familia_talla = df_proyeccion_familia_talla.rename(columns={'clase': 'size'})
+df_proyeccion_familia_clima = df_proyeccion_familia_clima.rename(columns={'clase': 'clima'})
+###############################################################
+# Stock Stuart vs real
+
+df_stock_real_proyeccion_familia_talla = pd.merge(df_stock_familia_talla[['family_desc', 'size', 'stock_mean']],
+                                                  df_proyeccion_familia_talla[['family_desc', 'size', 'posicion']],
+                                                  on=['family_desc', 'size'])
+
+
+
+########################################################33
 
 # pedodis recibidos
 pedidos_recibidos_fecha = datetime.datetime.strptime(fecha_compra, '%Y-%m-%d').strftime('%d%m%y')
