@@ -16,6 +16,7 @@ fecha_stock_actual_end_str = '2020-07-19'
 
 fecha_compra = '2020-06-17'
 
+familias_interes = ['BLUSA', 'CAMISETA', 'FALDA', 'JUMPSUIT', 'SHORT', 'TOP', 'VESTIDO']
 #####################################################################################################################
 # path
 # stock_fecha = fecha_stock_actual.replace("-", "")
@@ -26,6 +27,10 @@ productos_file = ('/var/lib/lookiero/stock/stock_tool/productos_preprocessed.csv
 stock_proyeccion_file = ('/var/lib/lookiero/stock/stock_tool/stuart/20200616/proyeccion_stock_todos.csv.gz')
 
 stuart_file = ()
+
+
+path_results = ('/home/darya/Documents/Reports/2020-07-17-kpi-roturas-particular-case')
+
 
 ######
 # fechas
@@ -111,16 +116,66 @@ df_proyeccion_familia_clima = df_proyeccion_week[df_proyeccion_all['caracteristi
 
 df_proyeccion_familia_talla['size'] = df_proyeccion_familia_talla['clase'].str.split('-').str[1]
 
-# df_proyeccion_familia_talla = df_proyeccion_familia_talla.rename(columns={'clase': 'size'})
+df_proyeccion_familia_talla = df_proyeccion_familia_talla.rename(columns={'clase': 'size_ord'})
 df_proyeccion_familia_clima = df_proyeccion_familia_clima.rename(columns={'clase': 'clima'})
 ###############################################################
 # Stock Stuart vs real
-
+# TODO: check name of the projected stock
 df_stock_real_proyeccion_familia_talla = pd.merge(df_stock_familia_talla[['family_desc', 'size', 'stock_mean']],
-                                                  df_proyeccion_familia_talla[['family_desc', 'size', 'posicion']],
+                                                  df_proyeccion_familia_talla[['family_desc', 'size', 'posicion', 'size_ord']],
                                                   on=['family_desc', 'size'])
 
+#######################################
+# plot familia talla
 
+
+df_plot_proyeccion_real_ft = df_stock_real_proyeccion_familia_talla[df_stock_real_proyeccion_familia_talla['family_desc'].isin(familias_interes)]
+
+df_plot_proyeccion_real_ft_melt = pd.melt(df_plot_proyeccion_real_ft,
+                                                             id_vars=['family_desc', 'size', 'size_ord'],
+                                                             value_vars=['stock_mean', 'posicion'],
+                                                             var_name='proyeccion/real',
+                                                             value_name='stock')
+
+df_plot_proyeccion_real_ft_melt = df_plot_proyeccion_real_ft_melt.sort_values(by=['family_desc', 'size_ord'])
+
+
+
+sns.set(font_scale=1.5)
+g = sns.catplot(data=df_plot_proyeccion_real_ft_melt,
+                x="size",
+                y="stock",
+                hue='proyeccion/real',
+                col="family_desc",
+                #col_wrap=7,
+                kind="bar",
+                aspect=0.8,
+                palette='muted',
+                ci=None,
+                sharey=False,
+                sharex=False,
+                legend=True
+                )
+
+for ax in g.axes.ravel():
+    # ax.axhline(0, color="k", clip_on=False)
+    ax.set_xticklabels(ax.get_xticklabels(), fontsize=14, rotation=90)
+#
+# ax.text(10.5, 0.85, 'GOAL')
+#
+(g.set_axis_labels("", "Unidades").set_titles("{col_name}"))
+#
+# plt.legend(loc=(2, 0))  # bbox_to_anchor=(1.5, 0),
+# plt.tight_layout()
+g.fig.suptitle('Stock real vs Proyeccion de Stuart, familia - talla')
+g.fig.subplots_adjust(top=0.85)
+
+g.savefig(os.path.join(path_results, "plot_stock_real_proyected_familia_talla.png"))
+
+
+
+###############################################################################################################
+# Stuart vs Compra
 
 ########################################################33
 
