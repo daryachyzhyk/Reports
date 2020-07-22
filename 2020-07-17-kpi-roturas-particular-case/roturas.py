@@ -17,6 +17,14 @@ fecha_stock_actual_end_str = '2020-07-19'
 fecha_compra = '2020-06-17'
 
 familias_interes = ['BLUSA', 'CAMISETA', 'FALDA', 'JUMPSUIT', 'SHORT', 'TOP', 'VESTIDO']
+
+dic_clima = {0.: 'cold',
+             0.5: 'cold_soft_cold',
+             1.: 'soft_cold',
+             1.5: 'soft_cold_soft_warm',
+             2.: 'soft_warm',
+             2.5: 'soft_warm_warm',
+             3.:  'warm'}
 #####################################################################################################################
 # path
 # stock_fecha = fecha_stock_actual.replace("-", "")
@@ -71,7 +79,7 @@ for i in range(delta_fecha_stock_actual.days + 1):
     df_stock_all = df_stock_all.append(df_stock_day)
 
 
-
+df_stock_all = df_stock_all.rename(columns={'real_stock': 'stock_real_week'})
 #######################################################
 # info de cada prenda
 list_reference_stock = df_stock_all["reference"].to_list()
@@ -87,15 +95,21 @@ df_productos = pd.read_csv(productos_file,
 
 df_stock_reference = pd.merge(df_stock_all, df_productos, on='reference', how='left')
 
-df_stock_familia_talla = df_stock_reference.groupby(['family_desc', 'size']).agg({'real_stock': 'sum',
+
+
+df_stock_familia_talla = df_stock_reference.groupby(['family_desc', 'size']).agg({'stock_real_week': 'sum',
                                                                                   'date': 'last'}).reset_index()
 
-df_stock_familia_clima = df_stock_reference.groupby(['family_desc', 'clima']).agg({'real_stock': 'sum',
+df_stock_familia_clima = df_stock_reference.groupby(['family_desc', 'clima']).agg({'stock_real_week': 'sum',
                                                                                    'date': 'last'}).reset_index()
 
-df_stock_familia_talla['stock_mean'] = (df_stock_familia_talla['real_stock'] / 7)
+df_stock_familia_clima['clima_desc'] = df_stock_familia_clima['clima'].replace(dic_clima)
+df_stock_familia_clima['clima'] = df_stock_familia_clima['clima'].astype(str)
 
-df_stock_familia_clima['stock_mean'] = (df_stock_familia_clima['real_stock'] / 7)
+df_stock_familia_talla['stock_real'] = (df_stock_familia_talla['stock_real_week'] / 7)
+
+df_stock_familia_clima['stock_real'] = (df_stock_familia_clima['stock_real_week'] / 7)
+
 
 
 # df_stock_familia_talla['stock_mean'] = (df_stock_familia_talla['real_stock'] / 7).round(0)
@@ -116,14 +130,28 @@ df_proyeccion_familia_clima = df_proyeccion_week[df_proyeccion_all['caracteristi
 
 df_proyeccion_familia_talla['size'] = df_proyeccion_familia_talla['clase'].str.split('-').str[1]
 
-df_proyeccion_familia_talla = df_proyeccion_familia_talla.rename(columns={'clase': 'size_ord'})
-df_proyeccion_familia_clima = df_proyeccion_familia_clima.rename(columns={'clase': 'clima'})
+df_proyeccion_familia_talla = df_proyeccion_familia_talla.rename(columns={'clase': 'size_ord',
+                                                                          'posicion': 'stock_proyeccion'})
+df_proyeccion_familia_clima = df_proyeccion_familia_clima.rename(columns={'clase': 'clima',
+                                                                          'posicion': 'stock_proyeccion'})
 ###############################################################
 # Stock Stuart vs real
-# TODO: check name of the projected stock
-df_stock_real_proyeccion_familia_talla = pd.merge(df_stock_familia_talla[['family_desc', 'size', 'stock_mean']],
-                                                  df_proyeccion_familia_talla[['family_desc', 'size', 'posicion', 'size_ord']],
+
+df_stock_real_proyeccion_familia_talla = pd.merge(df_stock_familia_talla[['family_desc', 'size', 'stock_real']],
+                                                  df_proyeccion_familia_talla[['family_desc', 'size', 'stock_proyeccion', 'size_ord']],
                                                   on=['family_desc', 'size'])
+
+# df_stock_real_proyeccion_familia_talla = df_stock_real_proyeccion_familia_talla.rename(columns={'stock_mean': 'stock_real'})
+
+
+
+# TODO: rename clima values
+# clima
+df_stock_real_proyeccion_familia_clima = pd.merge(df_stock_familia_clima[['family_desc', 'clima', 'stock_real', 'clima_desc']],
+                                                  df_proyeccion_familia_clima[['family_desc', 'clima', 'stock_proyeccion']],
+                                                  on=['family_desc', 'clima'])
+
+# df_stock_real_proyeccion_familia_clima = df_stock_real_proyeccion_familia_clima.rename(columns={'stock_mean': 'stock_real'})
 
 #######################################
 # plot familia talla
@@ -133,8 +161,8 @@ df_plot_proyeccion_real_ft = df_stock_real_proyeccion_familia_talla[df_stock_rea
 
 df_plot_proyeccion_real_ft_melt = pd.melt(df_plot_proyeccion_real_ft,
                                                              id_vars=['family_desc', 'size', 'size_ord'],
-                                                             value_vars=['stock_mean', 'posicion'],
-                                                             var_name='proyeccion/real',
+                                                             value_vars=['stock_real', 'stock_proyeccion'],
+                                                             var_name='stock_type',
                                                              value_name='stock')
 
 df_plot_proyeccion_real_ft_melt = df_plot_proyeccion_real_ft_melt.sort_values(by=['family_desc', 'size_ord'])
@@ -145,9 +173,8 @@ sns.set(font_scale=1.5)
 g = sns.catplot(data=df_plot_proyeccion_real_ft_melt,
                 x="size",
                 y="stock",
-                hue='proyeccion/real',
+                hue='stock_type',
                 col="family_desc",
-                #col_wrap=7,
                 kind="bar",
                 aspect=0.8,
                 palette='muted',
@@ -171,6 +198,51 @@ g.fig.suptitle('Stock real vs Proyeccion de Stuart, familia - talla')
 g.fig.subplots_adjust(top=0.85)
 
 g.savefig(os.path.join(path_results, "plot_stock_real_proyected_familia_talla.png"))
+
+###############################################
+# plot familia - clima
+
+df_plot_proyeccion_real_fc = df_stock_real_proyeccion_familia_clima[df_stock_real_proyeccion_familia_clima['family_desc'].isin(familias_interes)]
+
+df_plot_proyeccion_real_fc_melt = pd.melt(df_plot_proyeccion_real_fc,
+                                                             id_vars=['family_desc', 'clima', 'clima_desc'],
+                                                             value_vars=['stock_real', 'stock_proyeccion'],
+                                                             var_name='stock_type',
+                                                             value_name='stock')
+
+# df_plot_proyeccion_real_ft_melt = df_plot_proyeccion_real_ft_melt.sort_values(by=['family_desc', 'size_ord'])
+
+
+
+sns.set(font_scale=1.5)
+g = sns.catplot(data=df_plot_proyeccion_real_fc_melt,
+                x="clima",
+                y="stock",
+                hue='stock_type',
+                col="family_desc",
+                kind="bar",
+                aspect=0.8,
+                palette='muted',
+                ci=None,
+                sharey=False,
+                sharex=False,
+                legend=True
+                )
+
+for ax in g.axes.ravel():
+    # ax.axhline(0, color="k", clip_on=False)
+    ax.set_xticklabels(ax.get_xticklabels(), fontsize=14, rotation=90)
+#
+# ax.text(10.5, 0.85, 'GOAL')
+#
+(g.set_axis_labels("", "Unidades").set_titles("{col_name}"))
+#
+# plt.legend(loc=(2, 0))  # bbox_to_anchor=(1.5, 0),
+# plt.tight_layout()
+g.fig.suptitle('Stock real vs Proyeccion de Stuart, familia - clima')
+g.fig.subplots_adjust(top=0.85)
+
+g.savefig(os.path.join(path_results, "plot_stock_real_proyected_familia_clima.png"))
 
 
 
