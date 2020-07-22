@@ -312,7 +312,7 @@ df_stuart_familia_talla = df_stuart_familia_talla.rename(columns={'clase': 'size
 # clima
 df_stuart_familia_clima = df_stuart_all[(df_stuart_all['caracteristica'] == 'clima_valor') & (df_stuart_all['family_desc'].isin(familias_interes))]
 
-df_stuart_familia_clima = df_proyeccion_familia_clima.rename(columns={'clase': 'clima'})
+df_stuart_familia_clima = df_stuart_familia_clima.rename(columns={'clase': 'clima'})
 
 df_stuart_familia_clima['clima_desc'] = df_stuart_familia_clima['clima'].replace(dic_clima)
 df_stuart_familia_clima['clima'] = df_stuart_familia_clima['clima'].astype(str)
@@ -381,16 +381,105 @@ df_compra_actual_ft = df_compra_actual_ftc.groupby(['family_desc', 'size']).agg(
 df_compra_actual_fc = df_compra_actual_ftc.groupby(['family_desc', 'clima']).agg({'cantidad_pedida': 'sum'}).reset_index()
 
 
-df_compra_actual_familia_talla = df_compra_actual_ft[['family_desc'].isin(familias_interes)]
+df_compra_actual_familia_talla = df_compra_actual_ft[df_compra_actual_ft['family_desc'].isin(familias_interes)]
 
-df_compra_actual_familia_clima = df_compra_actual_fc[['family_desc'].isin(familias_interes)]
-
-
+df_compra_actual_familia_clima = df_compra_actual_fc[df_compra_actual_fc['family_desc'].isin(familias_interes)]
 
 
+# talla
+df_stuart_compra_actual_ft = pd.merge(df_stuart_familia_talla[['family_desc', 'size', 'size_ord', 'recomendacion']],
+                                      df_compra_actual_familia_talla,
+                                      on=['family_desc', 'size'],
+                                      how='left')
 
-# select just from actual season
-# df_compra_actual = df_compra_actual[df_compra_actual['temporada'] == temporada_prenda]
+df_stuart_compra_actual_ft['cantidad_pedida'] = df_stuart_compra_actual_ft['cantidad_pedida'].fillna(0)
+
+df_stuart_compra_actual_ft_plot = df_stuart_compra_actual_ft.melt(id_vars=['family_desc', 'size', 'size_ord'],
+                                                                  value_vars=['recomendacion', 'cantidad_pedida'],
+                                                                  var_name='stuart_compra', value_name='cantidad')
+
+# clima
+df_compra_actual_familia_clima['clima'] = df_compra_actual_familia_clima['clima'].astype(str)
+
+df_stuart_compra_actual_fc = pd.merge(df_stuart_familia_clima[['family_desc', 'clima', 'clima_desc', 'recomendacion']],
+                                      df_compra_actual_familia_clima,
+                                      on=['family_desc', 'clima'],
+                                      how='left')
+
+df_stuart_compra_actual_fc['cantidad_pedida'] = df_stuart_compra_actual_fc['cantidad_pedida'].fillna(0)
+
+df_stuart_compra_actual_fc_plot = df_stuart_compra_actual_fc.melt(id_vars=['family_desc', 'clima', 'clima_desc'],
+                                                                  value_vars=['recomendacion', 'cantidad_pedida'],
+                                                                  var_name='stuart_compra', value_name='cantidad')
 
 
+
+# talla
+
+sns.set(font_scale=1.5)
+g = sns.catplot(data=df_stuart_compra_actual_ft_plot,
+                x="size",
+                y="cantidad",
+                hue='stuart_compra',
+                col="family_desc",
+                col_wrap=3,
+                kind="bar",
+                aspect=0.8,
+                palette='muted',
+                ci=None,
+                sharey=False,
+                sharex=False,
+                legend=False
+                )
+
+for ax in g.axes.ravel():
+    # ax.axhline(0, color="k", clip_on=False)
+    ax.set_xticklabels(ax.get_xticklabels(), fontsize=14, rotation=90)
+#
+# ax.text(10.5, 0.85, 'GOAL')
+#
+(g.set_axis_labels("", "Unidades").set_titles("{col_name}"))
+#
+plt.legend(loc=(2, 0))  # bbox_to_anchor=(1.5, 0),
+# plt.tight_layout()
+g.fig.suptitle('Stuart recomendacion vs compra real, familia - talla')
+
+g.fig.subplots_adjust(top=0.92)
+
+g.savefig(os.path.join(path_results, "plot_stuart_compra_familia_talla.png"))
+
+
+# clima
+
+sns.set(font_scale=1.5)
+g = sns.catplot(data=df_stuart_compra_actual_fc_plot,
+                x="clima_desc",
+                y="cantidad",
+                hue='stuart_compra',
+                col="family_desc",
+                col_wrap=3,
+                kind="bar",
+                aspect=0.8,
+                palette='muted',
+                ci=None,
+                sharey=False,
+                sharex=False,
+                legend=False
+                )
+
+for ax in g.axes.ravel():
+    # ax.axhline(0, color="k", clip_on=False)
+    ax.set_xticklabels(ax.get_xticklabels(), fontsize=14, rotation=90)
+#
+# ax.text(10.5, 0.85, 'GOAL')
+#
+(g.set_axis_labels("", "Unidades").set_titles("{col_name}"))
+#
+plt.legend(loc=(2, 0))  # bbox_to_anchor=(1.5, 0),
+# plt.tight_layout()
+g.fig.suptitle('Stuart recomendacion vs compra real, familia - clima')
+
+g.fig.subplots_adjust(top=0.92)
+
+g.savefig(os.path.join(path_results, "plot_stuart_compra_familia_clima.png"))
 
