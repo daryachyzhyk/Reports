@@ -319,3 +319,78 @@ df_stuart_familia_clima['clima'] = df_stuart_familia_clima['clima'].astype(str)
 
 
 ##############################################################################################################
+# compra real
+
+
+df_compra_actual_all = pd.read_excel(compra_actual_file)
+
+
+
+
+df_compra_anterior_all = pd.read_csv(compra_anterior_file, encoding="ISO-8859-1")
+
+# rename and clean the data of the real compra
+
+df_compra_actual = df_compra_actual_all[['Artículo', 'Artículo -> Grupo -> Temporada',
+                                         'Artículo -> Grupo -> Familia -> Nombre',
+                                         'Artículo -> Talla',
+                                         'Cantidad pedida',
+                                         'Cantidad Entregada',
+                                         'Cantidad pendiente',
+                                         'Ultima recepción -> Compra -> Fecha',
+                                         'Fecha prevista de entrega',
+                                         'Artículo -> Precio de Venta (con Iva)',
+                                         'Pedidos -> Pedido']]
+
+df_compra_actual = df_compra_actual.rename(columns={'Artículo': 'reference',
+                                                    'Artículo -> Grupo -> Temporada': 'temporada',
+                                                    'Artículo -> Grupo -> Familia -> Nombre': 'family_desc',
+                                                    'Artículo -> Talla': 'size',
+                                                    'Cantidad pedida': 'cantidad_pedida',
+                                                    'Cantidad Entregada': 'cantidad_entregada',
+                                                    'Cantidad pendiente': 'cantidad_pendiente',
+                                                    'Ultima recepción -> Compra -> Fecha': 'fecha_recepcion',
+                                                    'Fecha prevista de entrega': 'fecha_prevista_entrega',
+                                                    'Artículo -> Precio de Venta (con Iva)': 'precio_venta_coniva',
+                                                    'Pedidos -> Pedido': 'numero_pedido'})
+
+df_compra_actual.loc[df_compra_actual['family_desc'] == 'DENIM JEANS', 'family_desc'] = 'DENIM'
+
+# TODO : añadir clima
+
+# info de cada prenda
+list_reference_compra = df_compra_actual["reference"].to_list()
+query_product_text = 'reference in @list_reference_compra'
+
+
+df_productos_compra = pd.read_csv(productos_file,
+                           usecols=['reference', 'clima'] # , 'clima_grupo'
+                           ).query(query_product_text)
+
+
+
+df_compra_actual_ftc = pd.merge(df_compra_actual,
+                                df_productos_compra,
+                                on=['reference'],
+                                how='left')
+
+df_compra_actual_ft = df_compra_actual_ftc.groupby(['family_desc', 'size']).agg({'cantidad_pedida': 'sum',
+                                                                                 # 'cantidad_entregada': 'sum',
+                                                                                 # 'cantidad_pendiente': 'sum'
+                                                                                 }).reset_index()
+df_compra_actual_fc = df_compra_actual_ftc.groupby(['family_desc', 'clima']).agg({'cantidad_pedida': 'sum'}).reset_index()
+
+
+df_compra_actual_familia_talla = df_compra_actual_ft[['family_desc'].isin(familias_interes)]
+
+df_compra_actual_familia_clima = df_compra_actual_fc[['family_desc'].isin(familias_interes)]
+
+
+
+
+
+# select just from actual season
+# df_compra_actual = df_compra_actual[df_compra_actual['temporada'] == temporada_prenda]
+
+
+
