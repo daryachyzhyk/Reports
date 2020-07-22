@@ -264,65 +264,58 @@ g.fig.subplots_adjust(top=0.92)
 g.savefig(os.path.join(path_results, "plot_stock_real_proyected_familia_clima.png"))
 
 
+
+###############################################################################################################
+# Stuart vs Compra
+
+########################################################33
+
+
+
+# recomendacion de stuart
+stuart_output_file = ('/var/lib/lookiero/stock/stock_tool/stuart/20200616/stuart_output_todos.csv.gz')
+
+
+# compra realizada
+compra_actual_file = ('/home/darya/Documents/stuart/data/kpi/Compra-2020-06-17.xlsx')
+compra_anterior_file = ('/var/lib/lookiero/stock/stock_tool/stuart/pedidos.csv.gz')
+
+# venta
+venta_file = ('/var/lib/lookiero/stock/stock_tool/demanda_preprocessed.csv.gz')
+
+# # precios_compra_file = ('/home/darya/Documents/stuart/data/kpi/precio_compra.csv')
 #
-# ###############################################################################################################
-# # Stuart vs Compra
+# path_results = ('/home/darya/Documents/Reports/2020-07-17-kpi-roturas-particular-case')
 #
-# ########################################################33
-#
+##
 # # pedodis recibidos
 # pedidos_recibidos_fecha = datetime.datetime.strptime(fecha_compra, '%Y-%m-%d').strftime('%d%m%y')
 # pedidos_recibidos_file = os.path.join('/var/lib/lookiero/stock/Pedidos_recibidos', '')
 #
 #
 # pedidos_recibidos = ('')
-#
-#
-#
-#
-# # # recomendacion de stuart
-# # stuart_output_file1 = ('/var/lib/lookiero/stock/stock_tool/stuart/20200511/stuart_output.csv')
-# # stuart_output_file2 = ('/var/lib/lookiero/stock/stock_tool/stuart/20200525/stuart_output.csv')
-# #
-# # # compra realizada
-# # compra_actual_file = ('/home/darya/Documents/stuart/data/kpi/kpi-20200511/compra-referencias-11-25-05-2020.csv')
-# # compra_anterior_file = ('/var/lib/lookiero/stock/stock_tool/stuart/pedidos.csv')
-# #
-# # # venta
-# # venta_file = ('/var/lib/lookiero/stock/stock_tool/demanda_preprocessed.csv')
-# #
-# # precios_compra_file = ('/home/darya/Documents/stuart/data/kpi/precio_compra.csv')
-#
-# path_results = ('/home/darya/Documents/Reports/2020-07-17-kpi-roturas-particular-case')
-#
-#
-#
-# #######################################################################################################################
-# # load data
-#
-# # stock actual
-#
-# query_venta_text = 'real_stock > 0 and active > 0'
-#
-# df_stock_all = pd.read_csv(stock_file,
-#                            usecols=['reference', 'family', 'real_stock', 'active']
-#                            ).query(query_venta_text)
-#
-#
-# ####################################
-# # promedio de stock actual
-#
-#
-#
-#
-# # stuart recommendation
-# df_stuart_all1 = pd.read_csv(stuart_output_file1, usecols=['family_desc', 'size', 'recomendacion', 'size_ord'])
-# df_stuart_all2 = pd.read_csv(stuart_output_file2, usecols=['family_desc', 'size', 'recomendacion', 'size_ord'])
-# df_stuart_all1 = df_stuart_all1.rename(columns={'recomendacion': 'recomendacion1'})
-# df_stuart_all2 = df_stuart_all2.rename(columns={'recomendacion': 'recomendacion2'})
-#
-# df_stuart = pd.merge(df_stuart_all1, df_stuart_all2, on=['family_desc', 'size', 'size_ord'])
-#
-# df_stuart['recomendacion'] = df_stuart['recomendacion1'] + df_stuart['recomendacion2']
-#
-# df_stuart['recomendacion'] = df_stuart['recomendacion'].round(0)
+
+
+
+##########################################################################################3
+# stuart recommendation
+
+
+df_stuart_all = pd.read_csv(stuart_output_file)
+
+# talla
+df_stuart_familia_talla = df_stuart_all[(df_stuart_all['caracteristica'] == 'tallas') & (df_stuart_all['family_desc'].isin(familias_interes))]
+df_stuart_familia_talla['size'] = df_stuart_familia_talla['clase'].str.split('-').str[1]
+df_stuart_familia_talla = df_stuart_familia_talla.rename(columns={'clase': 'size_ord'})
+
+
+# clima
+df_stuart_familia_clima = df_stuart_all[(df_stuart_all['caracteristica'] == 'clima_valor') & (df_stuart_all['family_desc'].isin(familias_interes))]
+
+df_stuart_familia_clima = df_proyeccion_familia_clima.rename(columns={'clase': 'clima'})
+
+df_stuart_familia_clima['clima_desc'] = df_stuart_familia_clima['clima'].replace(dic_clima)
+df_stuart_familia_clima['clima'] = df_stuart_familia_clima['clima'].astype(str)
+
+
+##############################################################################################################
