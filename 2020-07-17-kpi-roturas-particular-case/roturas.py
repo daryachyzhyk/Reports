@@ -25,6 +25,22 @@ dic_clima = {0.: 'cold',
              2.: 'soft_warm',
              2.5: 'soft_warm_warm',
              3.:  'warm'}
+
+dic_clima = {0.: '0_invierno',
+             0.5: '0.5_invierno',
+             1.: '1_invierno',
+             1.5: '1.5_entretiempo',
+             2.: '2_verano',
+             2.5: '2.5_verano',
+             3.:  '3_verano'}
+
+dic_clima = {0.: '0_inv',
+             0.5: '0.5_inv',
+             1.: '1_inv',
+             1.5: '1.5_ent',
+             2.: '2_ver',
+             2.5: '2.5_ver',
+             3.:  '3_ver'}
 #####################################################################################################################
 # path
 # stock_fecha = fecha_stock_actual.replace("-", "")
@@ -175,6 +191,7 @@ g = sns.catplot(data=df_plot_proyeccion_real_ft_melt,
                 y="stock",
                 hue='stock_type',
                 col="family_desc",
+                col_wrap=3,
                 kind="bar",
                 aspect=0.8,
                 palette='muted',
@@ -195,7 +212,8 @@ for ax in g.axes.ravel():
 # plt.legend(loc=(2, 0))  # bbox_to_anchor=(1.5, 0),
 # plt.tight_layout()
 g.fig.suptitle('Stock real vs Proyeccion de Stuart, familia - talla')
-g.fig.subplots_adjust(top=0.85)
+
+g.fig.subplots_adjust(top=0.92)
 
 g.savefig(os.path.join(path_results, "plot_stock_real_proyected_familia_talla.png"))
 
@@ -216,94 +234,95 @@ df_plot_proyeccion_real_fc_melt = pd.melt(df_plot_proyeccion_real_fc,
 
 sns.set(font_scale=1.5)
 g = sns.catplot(data=df_plot_proyeccion_real_fc_melt,
-                x="clima",
+                x="clima_desc",
                 y="stock",
                 hue='stock_type',
                 col="family_desc",
+                col_wrap=3,
                 kind="bar",
                 aspect=0.8,
                 palette='muted',
                 ci=None,
                 sharey=False,
                 sharex=False,
-                legend=True
+                legend=False
                 )
 
 for ax in g.axes.ravel():
     # ax.axhline(0, color="k", clip_on=False)
-    ax.set_xticklabels(ax.get_xticklabels(), fontsize=14, rotation=90)
+    ax.set_xticklabels(ax.get_xticklabels(), fontsize=14, rotation=0) # 90
 #
 # ax.text(10.5, 0.85, 'GOAL')
 #
 (g.set_axis_labels("", "Unidades").set_titles("{col_name}"))
 #
-# plt.legend(loc=(2, 0))  # bbox_to_anchor=(1.5, 0),
+plt.legend(loc=(2, 0))  # bbox_to_anchor=(1.5, 0),
 # plt.tight_layout()
 g.fig.suptitle('Stock real vs Proyeccion de Stuart, familia - clima')
-g.fig.subplots_adjust(top=0.85)
+g.fig.subplots_adjust(top=0.92)
 
 g.savefig(os.path.join(path_results, "plot_stock_real_proyected_familia_clima.png"))
 
 
-
-###############################################################################################################
-# Stuart vs Compra
-
-########################################################33
-
-# pedodis recibidos
-pedidos_recibidos_fecha = datetime.datetime.strptime(fecha_compra, '%Y-%m-%d').strftime('%d%m%y')
-pedidos_recibidos_file = os.path.join('/var/lib/lookiero/stock/Pedidos_recibidos', '')
-
-
-pedidos_recibidos = ('')
-
-
-
-
-# # recomendacion de stuart
-# stuart_output_file1 = ('/var/lib/lookiero/stock/stock_tool/stuart/20200511/stuart_output.csv')
-# stuart_output_file2 = ('/var/lib/lookiero/stock/stock_tool/stuart/20200525/stuart_output.csv')
 #
-# # compra realizada
-# compra_actual_file = ('/home/darya/Documents/stuart/data/kpi/kpi-20200511/compra-referencias-11-25-05-2020.csv')
-# compra_anterior_file = ('/var/lib/lookiero/stock/stock_tool/stuart/pedidos.csv')
+# ###############################################################################################################
+# # Stuart vs Compra
 #
-# # venta
-# venta_file = ('/var/lib/lookiero/stock/stock_tool/demanda_preprocessed.csv')
+# ########################################################33
 #
-# precios_compra_file = ('/home/darya/Documents/stuart/data/kpi/precio_compra.csv')
-
-path_results = ('/home/darya/Documents/Reports/2020-07-17-kpi-roturas-particular-case')
-
-
-
-#######################################################################################################################
-# load data
-
-# stock actual
-
-query_venta_text = 'real_stock > 0 and active > 0'
-
-df_stock_all = pd.read_csv(stock_file,
-                           usecols=['reference', 'family', 'real_stock', 'active']
-                           ).query(query_venta_text)
-
-
-####################################
-# promedio de stock actual
-
-
-
-
-# stuart recommendation
-df_stuart_all1 = pd.read_csv(stuart_output_file1, usecols=['family_desc', 'size', 'recomendacion', 'size_ord'])
-df_stuart_all2 = pd.read_csv(stuart_output_file2, usecols=['family_desc', 'size', 'recomendacion', 'size_ord'])
-df_stuart_all1 = df_stuart_all1.rename(columns={'recomendacion': 'recomendacion1'})
-df_stuart_all2 = df_stuart_all2.rename(columns={'recomendacion': 'recomendacion2'})
-
-df_stuart = pd.merge(df_stuart_all1, df_stuart_all2, on=['family_desc', 'size', 'size_ord'])
-
-df_stuart['recomendacion'] = df_stuart['recomendacion1'] + df_stuart['recomendacion2']
-
-df_stuart['recomendacion'] = df_stuart['recomendacion'].round(0)
+# # pedodis recibidos
+# pedidos_recibidos_fecha = datetime.datetime.strptime(fecha_compra, '%Y-%m-%d').strftime('%d%m%y')
+# pedidos_recibidos_file = os.path.join('/var/lib/lookiero/stock/Pedidos_recibidos', '')
+#
+#
+# pedidos_recibidos = ('')
+#
+#
+#
+#
+# # # recomendacion de stuart
+# # stuart_output_file1 = ('/var/lib/lookiero/stock/stock_tool/stuart/20200511/stuart_output.csv')
+# # stuart_output_file2 = ('/var/lib/lookiero/stock/stock_tool/stuart/20200525/stuart_output.csv')
+# #
+# # # compra realizada
+# # compra_actual_file = ('/home/darya/Documents/stuart/data/kpi/kpi-20200511/compra-referencias-11-25-05-2020.csv')
+# # compra_anterior_file = ('/var/lib/lookiero/stock/stock_tool/stuart/pedidos.csv')
+# #
+# # # venta
+# # venta_file = ('/var/lib/lookiero/stock/stock_tool/demanda_preprocessed.csv')
+# #
+# # precios_compra_file = ('/home/darya/Documents/stuart/data/kpi/precio_compra.csv')
+#
+# path_results = ('/home/darya/Documents/Reports/2020-07-17-kpi-roturas-particular-case')
+#
+#
+#
+# #######################################################################################################################
+# # load data
+#
+# # stock actual
+#
+# query_venta_text = 'real_stock > 0 and active > 0'
+#
+# df_stock_all = pd.read_csv(stock_file,
+#                            usecols=['reference', 'family', 'real_stock', 'active']
+#                            ).query(query_venta_text)
+#
+#
+# ####################################
+# # promedio de stock actual
+#
+#
+#
+#
+# # stuart recommendation
+# df_stuart_all1 = pd.read_csv(stuart_output_file1, usecols=['family_desc', 'size', 'recomendacion', 'size_ord'])
+# df_stuart_all2 = pd.read_csv(stuart_output_file2, usecols=['family_desc', 'size', 'recomendacion', 'size_ord'])
+# df_stuart_all1 = df_stuart_all1.rename(columns={'recomendacion': 'recomendacion1'})
+# df_stuart_all2 = df_stuart_all2.rename(columns={'recomendacion': 'recomendacion2'})
+#
+# df_stuart = pd.merge(df_stuart_all1, df_stuart_all2, on=['family_desc', 'size', 'size_ord'])
+#
+# df_stuart['recomendacion'] = df_stuart['recomendacion1'] + df_stuart['recomendacion2']
+#
+# df_stuart['recomendacion'] = df_stuart['recomendacion'].round(0)
