@@ -510,7 +510,7 @@ def get_current_season(date_):
         season = np.nan()
     return season
 
-season_actual = get_current_season(fecha_stock_actual_start)
+
 
 
 # campos fichero PENDIENTES.txt
@@ -526,38 +526,74 @@ season_actual = get_current_season(fecha_stock_actual_start)
 
 pendientes_folder = ('/var/lib/lookiero/stock/Pendiente_llegar')
 
-pendientes_fecha_start = fecha_stock_actual_start.strftime('%d%m%Y')
-
-pendientes_file = os.path.join(pendientes_folder, 'PENDIENTES_' + pendientes_fecha_start + '.txt')
-df_pendientes_raw = pd.read_csv(pendientes_file, sep=";", header=None, error_bad_lines=False, encoding="ISO-8859-1")
-df_pendientes_raw = df_pendientes_raw.drop(df_pendientes_raw.columns[-1], axis=1)
-
-df_pendientes_raw.columns = ["reference", "pendiente", "date", "family", "family_desc", "color", "temporada", "size",
-                             "brand", "precio_compra", "precio_compra_iva", "precio_compra_libras",
-                             "precio_compra_libras_iva"]
-# print(df.Geek_ID.str.split('_').str[1].tolist())
-# aa = df_pendientes_raw['reference'].str.extract('(?:(.*\d))?(?:([a-zA-Z]+))?')
-df_pendientes_raw['season'] = df_pendientes_raw['reference'].str.extract('(^[0-9]+)')
-
-df_pendientes_raw['season'] = df_pendientes_raw['season'].fillna('0')
-df_pendientes_raw['season'] = df_pendientes_raw['season'].astype(int)
-# (?:.+?(?=C))(C[0-9]+)(?:[0-9]{2}$|[^0-9]+$|X4XL+$)
-# df_pendientes_raw['season'] = df_pendientes_raw['reference'].str.extract('(?:(.*\d))?(?:([a-zA-Z]+))?')
 
 
+fecha_pendientes_anterior = fecha_stock_actual_start - datetime.timedelta(days=7)
 
-df_pendientes_all = df_pendientes_raw[df_pendientes_raw['season'] >= season_actual - 1]
-
-
-
-
-
-# df_pendientes_raw = pd.read_csv(pendientes_file, encoding="ISO-8859-1")
+# date_datetime = fecha_stock_actual_start
+# date_str = pendientes_fecha_start
 
 
-df_pendientes_all = df_pendientes_raw[df_pendientes_raw['reference'].isin(list_reference_compra)]
+def load_pendientes(date_datetime):
+    '''
+    Load the PENDIENTES_XXX.txt from stock server based on the date in datetime format for the seasons not older then
+    previous to the actual season.
+
+    :param date_datetime: datetime.datetime
+        The date of the day
+    :return: pandas.DataFrame
+    '''
+
+    folder = ('/var/lib/lookiero/stock/Pendiente_llegar')
+    date_str = date_datetime.strftime('%d%m%Y')
+    file = os.path.join(folder, 'PENDIENTES_' + date_str + '.txt')
+    # pendientes_anteriro_file = os.path.join(pendientes_folder, 'PENDIENTES_' + pendientes_fecha_anterior + '.txt')
 
 
+    df_raw = pd.read_csv(file, sep=";", header=None, error_bad_lines=False, encoding="ISO-8859-1")
+
+    df_raw = df_raw.drop(df_raw.columns[-1], axis=1)
+
+    df_raw.columns = ["reference", "pendiente", "date", "family", "family_desc", "color", "temporada", "size",
+                      "brand", "precio_compra", "precio_compra_iva", "precio_compra_libras", "precio_compra_libras_iva"]
+
+    df_raw['season'] = df_raw['reference'].str.extract('(^[0-9]+)')
+
+    df_raw['season'] = df_raw['season'].fillna('0')
+    df_raw['season'] = df_raw['season'].astype(int)
+
+    season_actual = get_current_season(date_datetime)
+    df = df_raw[df_raw['season'] >= season_actual - 1]
+
+    return df
+
+df_pendientes_actual_all = load_pendientes(fecha_stock_actual_start)
+
+df_pendientes_anterior_all = load_pendientes(fecha_pendientes_anterior)
+
+# add info about climate
+# list_reference_pendientes = df_stock_all["reference"].to_list()
+# query_product_text = 'reference in @list_reference_stock'
 
 
+df_productos_all_ref_cl = pd.read_csv(productos_file,
+                           usecols=['reference', 'clima'])
+
+
+df_pendientes_actual = pd.merge(df_pendientes_actual_all,
+                                df_productos_all_ref_cl.drop_duplicates('reference', keep='last'),
+                                on='reference',
+                                how='left')
+
+df_pendientes_anterior = pd.merge(df_pendientes_anterior_all,
+                                df_productos_all_ref_cl.drop_duplicates('reference', keep='last'),
+                                on='reference',
+                                how='left')
+
+df_pendientes_actual['clima'] = df_pendientes_actual['clima'].fillna('no_informado')
+df_pendientes_anterior['clima'] = df_pendientes_anterior['clima'].fillna('no_informado')
+
+# TODO: group and restar
+
+aa = df_pendientes_anterior[~df_pendientes_anterior['reference'].isin(df_pendientes_anterior_all['reference'])]
 
