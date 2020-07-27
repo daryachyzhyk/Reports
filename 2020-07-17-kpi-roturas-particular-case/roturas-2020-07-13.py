@@ -6,7 +6,8 @@ import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 
-from datetime import datetime, timedelta
+import datetime
+# from datetime import datetime, timedelta, date
 
 ####################################################################################################################
 # indicar parametros
@@ -62,8 +63,8 @@ path_results = ('/home/darya/Documents/Reports/2020-07-17-kpi-roturas-particular
 
 ######
 # fechas
-fecha_stock_actual_start = datetime.strptime(fecha_stock_actual_start_str, '%Y-%m-%d')
-fecha_stock_actual_end = datetime.strptime(fecha_stock_actual_end_str, '%Y-%m-%d')
+fecha_stock_actual_start = datetime.datetime.strptime(fecha_stock_actual_start_str, '%Y-%m-%d')
+fecha_stock_actual_end = datetime.datetime.strptime(fecha_stock_actual_end_str, '%Y-%m-%d')
 
 delta_fecha_stock_actual = fecha_stock_actual_end - fecha_stock_actual_start
 
@@ -73,7 +74,7 @@ delta_fecha_stock_actual = fecha_stock_actual_end - fecha_stock_actual_start
 df_stock_all = pd.DataFrame([])
 
 for i in range(delta_fecha_stock_actual.days + 1):
-    day = fecha_stock_actual_start + timedelta(days=i)
+    day = fecha_stock_actual_start + datetime.timedelta(days=i)
     print(day)
 
     stock_fecha = day.strftime('%Y%m%d')
@@ -490,20 +491,73 @@ g.savefig(os.path.join(path_results, "plot_stuart_compra_familia_clima.png"))
 #################################################################3
 # Pendientes
 
-pendientes_file = ('/var/lib/lookiero/stock/stock_tool/stuart2/20200702/pedidos.csv.gz')
 
 
-df_pendientes_raw = pd.read_csv(pendientes_file, encoding="ISO-8859-1")
+
+def get_current_season(date_):
+    if isinstance(fecha_stock_actual_start, datetime.datetime):
+        date_fisrt_season = datetime.datetime(2016, 1, 1)
+
+        # delta_month = (date_.year - date_fisrt_season.year) * 12 + date_.month - date_fisrt_season.month
+
+        delta_season = (date_.year - date_fisrt_season.year) * 2
+        if date_.month <= 6:
+            season = delta_season + 1
+        else:
+            season = delta_season + 2
+    else:
+        print('Shoud be datetime')
+        season = np.nan()
+    return season
+
+season_actual = get_current_season(fecha_stock_actual_start)
+
+
+# campos fichero PENDIENTES.txt
+# "reference","pendiente","date","family","family_desc","color","temporada","size","brand","precio_compra","precio_compra_iva","precio_compra_libras","precio_compra_libras_iva","NA"
+# date es fecha prevista de recibir
+# campos fichero PEDIDOS_RECIBIDOS.txt
+# "date","reference","pedidos","family","family_desc","date2","brand","precio_compra","precio_compra_iva","precio_compra_libras","precio_compra_libras_iva","NA"
+# date es fecha de recepción
+
+# datetime.
+
+# pendientes_file = ('/var/lib/lookiero/stock/stock_tool/stuart2/20200702/pedidos.csv.gz')
+
+pendientes_folder = ('/var/lib/lookiero/stock/Pendiente_llegar')
+
+pendientes_fecha_start = fecha_stock_actual_start.strftime('%d%m%Y')
+
+pendientes_file = os.path.join(pendientes_folder, 'PENDIENTES_' + pendientes_fecha_start + '.txt')
+df_pendientes_raw = pd.read_csv(pendientes_file, sep=";", header=None, error_bad_lines=False, encoding="ISO-8859-1")
+df_pendientes_raw = df_pendientes_raw.drop(df_pendientes_raw.columns[-1], axis=1)
+
+df_pendientes_raw.columns = ["reference", "pendiente", "date", "family", "family_desc", "color", "temporada", "size",
+                             "brand", "precio_compra", "precio_compra_iva", "precio_compra_libras",
+                             "precio_compra_libras_iva"]
+# print(df.Geek_ID.str.split('_').str[1].tolist())
+# aa = df_pendientes_raw['reference'].str.extract('(?:(.*\d))?(?:([a-zA-Z]+))?')
+df_pendientes_raw['season'] = df_pendientes_raw['reference'].str.extract('(^[0-9]+)')
+
+df_pendientes_raw['season'] = df_pendientes_raw['season'].fillna('0')
+df_pendientes_raw['season'] = df_pendientes_raw['season'].astype(int)
+# (?:.+?(?=C))(C[0-9]+)(?:[0-9]{2}$|[^0-9]+$|X4XL+$)
+# df_pendientes_raw['season'] = df_pendientes_raw['reference'].str.extract('(?:(.*\d))?(?:([a-zA-Z]+))?')
+
+
+
+df_pendientes_all = df_pendientes_raw[df_pendientes_raw['season'] >= season_actual - 1]
+
+
+
+
+
+# df_pendientes_raw = pd.read_csv(pendientes_file, encoding="ISO-8859-1")
 
 
 df_pendientes_all = df_pendientes_raw[df_pendientes_raw['reference'].isin(list_reference_compra)]
 
 
 
-df_pendientes_all = df_pendientes_raw[(df_pendientes_raw['date_pedido'] > fecha_pedido_start) &
-                                      (df_pendientes_raw['date_pedido'] < fecha_pedido_end)]
-
-fecha_pedido_start = '2020-06-17'
-fecha_pedido_end = '2020-06-30'
 
 
