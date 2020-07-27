@@ -82,3 +82,12 @@ fecha_stuart_str = dict_fechas[fecha_stock_actual_start_str][1]
 ############################
 # files
 stock_proyeccion_file = (os.path.join'/var/lib/lookiero/stock/stock_tool/stuart/20200616/proyeccion_stock_todos.csv.gz')
+
+
+
+
+def get_current_season(_date):
+    if isinstance(_date, datetime.datetime):
+        _date = _date.date()
+    _date = _date.replace(year=2000)
+    return [season for season, (start, end) in seasons if start <= _date <= end][0]
