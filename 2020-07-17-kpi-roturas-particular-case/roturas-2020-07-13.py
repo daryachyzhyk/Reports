@@ -594,6 +594,31 @@ df_pendientes_actual['clima'] = df_pendientes_actual['clima'].fillna('no_informa
 df_pendientes_anterior['clima'] = df_pendientes_anterior['clima'].fillna('no_informado')
 
 # TODO: group and restar
+df_pendientes_actual_ft = df_pendientes_actual.groupby(['family_desc', 'size']).agg({'pendiente': 'sum'}).reset_index()
 
-aa = df_pendientes_anterior[~df_pendientes_anterior['reference'].isin(df_pendientes_anterior_all['reference'])]
+df_pendientes_anterior_ft = df_pendientes_anterior.groupby(['family_desc', 'size']).agg({'pendiente': 'sum'}).reset_index()
 
+df_pendientes_actual_ft = df_pendientes_actual_ft.rename(columns={'pendiente': 'pendiente_actual'})
+
+df_pendientes_anterior_ft = df_pendientes_anterior_ft.rename(columns={'pendiente': 'pendiente_anterior'})
+
+df_pendientes_ft = pd.merge(df_pendientes_actual_ft,
+                            df_pendientes_anterior_ft,
+                            on=['family_desc', 'size'])
+
+
+df_pendientes_ft['pendiente_real'] = df_pendientes_ft['pendiente_actual'] - df_pendientes_ft['pendiente_anterior']
+
+
+df_pendientes_stuart_realidad_ft = pd.merge(df_pendientes_ft,
+                                            df_proyeccion_familia_talla[['family_desc', 'size', 'pendientes', 'size_ord']],
+                                            on=['family_desc', 'size'])
+
+df_pendientes_stuart_realidad_ft = df_pendientes_stuart_realidad_ft.rename(columns={'pendientes': 'pendiente_proyeccion'})
+
+df_pendientes_stuart_real_ft_merge = pd.melt(df_pendientes_stuart_realidad_ft,
+                                             id_vars=['family_desc', 'size', 'size_ord'],
+                                             value_vars=['pendiente_real', 'pendiente_proyeccion'],
+                                             var_name='pendiente_type',
+                                             value_name='pendiente'
+                                             )
