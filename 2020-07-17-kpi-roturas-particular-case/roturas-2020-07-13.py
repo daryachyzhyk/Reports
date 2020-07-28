@@ -607,7 +607,7 @@ df_pendientes_ft = pd.merge(df_pendientes_actual_ft,
                             on=['family_desc', 'size'])
 
 
-df_pendientes_ft['pendiente_real'] = df_pendientes_ft['pendiente_actual'] - df_pendientes_ft['pendiente_anterior']
+df_pendientes_ft['pendiente_real'] = np.abs(df_pendientes_ft['pendiente_anterior'] - df_pendientes_ft['pendiente_actual'])
 
 
 df_pendientes_stuart_realidad_ft = pd.merge(df_pendientes_ft,
@@ -622,3 +622,37 @@ df_pendientes_stuart_real_ft_merge = pd.melt(df_pendientes_stuart_realidad_ft,
                                              var_name='pendiente_type',
                                              value_name='pendiente'
                                              )
+
+
+
+sns.set(font_scale=1.5)
+g = sns.catplot(data=df_pendientes_stuart_real_ft_merge,
+                x="size",
+                y="pendiente",
+                hue='pendiente_type',
+                col="family_desc",
+                col_wrap=3,
+                kind="bar",
+                aspect=0.8,
+                palette='muted',
+                ci=None,
+                sharey=False,
+                sharex=False,
+                legend=False
+                )
+
+for ax in g.axes.ravel():
+    # ax.axhline(0, color="k", clip_on=False)
+    ax.set_xticklabels(ax.get_xticklabels(), fontsize=14, rotation=90)
+#
+# ax.text(10.5, 0.85, 'GOAL')
+#
+(g.set_axis_labels("", "Unidades").set_titles("{col_name}"))
+#
+plt.legend(loc=(2, 0))  # bbox_to_anchor=(1.5, 0),
+# plt.tight_layout()
+g.fig.suptitle('Pendientes proyeccion vs real, familia - talla')
+
+g.fig.subplots_adjust(top=0.92)
+
+g.savefig(os.path.join(path_results, "plot_pendientes_stuart_real_familia_talla.png"))
