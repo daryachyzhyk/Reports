@@ -55,9 +55,6 @@ productos_file = ('/var/lib/lookiero/stock/stock_tool/productos_preprocessed.csv
 
 stock_proyeccion_file = ('/var/lib/lookiero/stock/stock_tool/stuart/20200616/proyeccion_stock_todos.csv.gz')
 
-stuart_file = ()
-
-
 path_results = ('/home/darya/Documents/Reports/2020-07-17-kpi-roturas-particular-case')
 
 
@@ -71,6 +68,9 @@ delta_fecha_stock_actual = fecha_stock_actual_end - fecha_stock_actual_start
 ########################################
 # stock actual
 # stock_actual_file = []
+
+# TODO: create df['reference', 'clima']
+
 df_stock_all = pd.DataFrame([])
 
 for i in range(delta_fecha_stock_actual.days + 1):
@@ -625,34 +625,126 @@ df_pendientes_stuart_real_ft_merge = pd.melt(df_pendientes_stuart_realidad_ft,
 
 
 
-sns.set(font_scale=1.5)
-g = sns.catplot(data=df_pendientes_stuart_real_ft_merge,
-                x="size",
-                y="pendiente",
-                hue='pendiente_type',
-                col="family_desc",
-                col_wrap=3,
-                kind="bar",
-                aspect=0.8,
-                palette='muted',
-                ci=None,
-                sharey=False,
-                sharex=False,
-                legend=False
-                )
 
-for ax in g.axes.ravel():
-    # ax.axhline(0, color="k", clip_on=False)
-    ax.set_xticklabels(ax.get_xticklabels(), fontsize=14, rotation=90)
-#
-# ax.text(10.5, 0.85, 'GOAL')
-#
-(g.set_axis_labels("", "Unidades").set_titles("{col_name}"))
-#
-plt.legend(loc=(2, 0))  # bbox_to_anchor=(1.5, 0),
-# plt.tight_layout()
-g.fig.suptitle('Pendientes proyeccion vs real, familia - talla')
+def plot_catplot_stuart_real(df, x, y, hue, col, col_wrap, title_name, path_results, file_name, order=None):
+    sns.set(font_scale=1.5)
+    g = sns.catplot(data=df, x=x, y=y, hue=hue, col=col, col_wrap=col_wrap, order=order, kind="bar", aspect=0.8,
+                    palette='muted', ci=None, sharey=False, sharex=False, legend=False)
 
-g.fig.subplots_adjust(top=0.92)
+    for ax in g.axes.ravel():
+        ax.set_xticklabels(ax.get_xticklabels(), fontsize=14, rotation=90)
 
-g.savefig(os.path.join(path_results, "plot_pendientes_stuart_real_familia_talla.png"))
+    g.set_axis_labels("", "Unidades").set_titles("{col_name}")
+
+    plt.legend(loc=(2, 0))
+    g.fig.suptitle(title_name)
+    g.fig.subplots_adjust(top=0.92)
+    g.savefig(os.path.join(path_results, file_name))
+
+
+plot_catplot_stuart_real(df_pendientes_stuart_real_ft_merge,
+                         x="size",
+                         y="pendiente",
+                         hue='pendiente_type',
+                         col="family_desc",
+                         col_wrap=4, title_name='Pendientes proyeccion vs real, familia - talla',
+                         path_results=path_results,
+                         file_name='plot_pendientes_stuart_real_familia_talla.png')
+
+
+
+###########################################
+# Devos
+
+
+
+query_devos_text = 'date_terminated >= @fecha_stock_actual_start_str and date_terminated <= @fecha_stock_actual_end_str and purchased == 0'
+
+df_devos_real = pd.read_csv(venta_file,
+                           usecols=['reference', 'family_desc', 'size', 'date_ps_done', 'date_co',
+                                    'date_terminated', 'purchased']
+                           ).query(query_devos_text)
+
+# TODO: add reference climate
+
+df_devos_real_ft = df_devos_real.groupby(['family_desc', 'size']).agg({'reference': 'count'}).reset_index()
+df_devos_real_ft = df_devos_real_ft.rename(columns={'reference': 'devos_real'})
+
+df_devos_stuart_real_ft = pd.merge(df_devos_real_ft,
+                                            df_proyeccion_familia_talla[['family_desc', 'size', 'devos', 'size_ord']],
+                                            on=['family_desc', 'size'])
+
+df_devos_stuart_real_ft = df_devos_stuart_real_ft.rename(columns={'devos': 'devos_proyeccion'})
+
+df_devos_stuart_real_ft_melt = pd.melt(df_devos_stuart_real_ft,
+                                             id_vars=['family_desc', 'size', 'size_ord'],
+                                             value_vars=['devos_real', 'devos_proyeccion'],
+                                             var_name='devos_type',
+                                             value_name='devos')
+
+# df_devos_stuart_real_ft_melt = df_devos_stuart_real_ft_melt.sort_values(by=['family_desc', 'size_ord'])
+
+size_order = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'X4XL']
+
+plot_catplot_stuart_real(df_devos_stuart_real_ft_melt,
+                         x="size",
+                         y="devos",
+                         hue='devos_type',
+                         col="family_desc",
+                         col_wrap=4, title_name='Devos proyeccion vs real, familia - talla',
+                         path_results=path_results,
+                         file_name='plot_devos_stuart_real_familia_talla.png',
+                         order=size_order)
+
+####################################
+# Business plan
+
+query_envios_text = 'date_ps_done >= @fecha_stock_actual_start_str and date_ps_done <= @fecha_stock_actual_end_str'
+
+df_envios_real = pd.read_csv(venta_file,
+                           usecols=['reference', 'family_desc', 'size', 'date_ps_done', 'date_co',
+                                    'date_terminated', 'purchased']
+                           ).query(query_envios_text)
+
+
+df_envios_real_ft = df_envios_real.groupby(['family_desc', 'size']).agg({'reference': 'count'}).reset_index()
+df_envios_real_ft = df_envios_real_ft.rename(columns={'reference': 'envios_real'})
+
+df_envios_stuart_real_ft = pd.merge(df_envios_real_ft,
+                                            df_proyeccion_familia_talla[['family_desc', 'size', 'envios', 'size_ord']],
+                                            on=['family_desc', 'size'])
+
+df_envios_stuart_real_ft = df_envios_stuart_real_ft.rename(columns={'envios': 'envios_proyeccion'})
+
+df_envios_stuart_real_ft_melt = pd.melt(df_envios_stuart_real_ft,
+                                             id_vars=['family_desc', 'size', 'size_ord'],
+                                             value_vars=['envios_real', 'envios_proyeccion'],
+                                             var_name='envios_type',
+                                             value_name='envios')
+
+
+size_order = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'X4XL']
+
+plot_catplot_stuart_real(df_envios_stuart_real_ft_melt,
+                         x="size",
+                         y="envios",
+                         hue='envios_type',
+                         col="family_desc",
+                         col_wrap=4, title_name='Envios proyeccion vs real, familia - talla',
+                         path_results=path_results,
+                         file_name='plot_envios_stuart_real_familia_talla.png',
+                         order=size_order)
+
+
+#############################################################################################################
+# Acierto: count(date_co & purchased == 1) / count(date_co)
+
+file_acierto = ('/var/lib/lookiero/stock/stock_tool/stuart/distribucion_acierto_tallas.csv.gz')
+
+df_acierto_proyeccion = pd.read_csv(file_acierto)
+
+
+
+
+#########################################################################################################
+# Visibilidad
