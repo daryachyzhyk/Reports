@@ -188,7 +188,7 @@ df_plot_proyeccion_real_ft_melt = pd.melt(df_plot_proyeccion_real_ft,
 
 df_plot_proyeccion_real_ft_melt = df_plot_proyeccion_real_ft_melt.sort_values(by=['family_desc', 'size_ord'])
 
-
+df_plot_proyeccion_real_ft_melt.to_csv(os.path.join(path_results, 'stock_real_proyeccion_20200713.csv'))
 
 sns.set(font_scale=1.5)
 g = sns.catplot(data=df_plot_proyeccion_real_ft_melt,
@@ -747,4 +747,4 @@ df_acierto_proyeccion = pd.read_csv(file_acierto)
 
 
 #########################################################################################################
-# Visibilidad
+# Visibilidad Visibilidad
