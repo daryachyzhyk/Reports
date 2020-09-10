@@ -1,4 +1,11 @@
-
+'''
+Script to create the table of the real data last week:
+* stock
+* buing
+* sent
+* returns
+*
+'''
 import os
 import glob
 import pandas as pd
@@ -6,10 +13,12 @@ import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 
-from datetime import datetime, timedelta
+import datetime
 
 ####################################################################################################################
 # Input
+day_today = datetime.date.today()
+date_actual = day_today - datetime.timedelta(days = 7 + day_today.weekday())
 
 fecha_stock_actual_start_str = '2020-07-13'
 # fecha_stock_actual_end_str = '2020-07-19'
