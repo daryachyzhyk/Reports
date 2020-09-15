@@ -89,12 +89,12 @@ df_demanda_stock['demanda'] = df_demanda_stock['demanda'].fillna(0)
 
 var_list = ['reference', 'family_desc',
             'brand',
-            # 'color',
+
             'aventurera', 'basico', 'composicion',
             # 'estilo_boho',	'estilo_casual', 'estilo_clasico', 'estilo_minimal', 'estilo_noche', 'estilo_street',
             'fit', 'pattern', 'tejido',
             # 'uso_administrativa', 'uso_eventos', 'uso_noche', 'uso_tiempo_libre', 'uso_working_girl',
-            'color_group', 'color_category',
+            'color', 'color_group', 'color_category',
             'price_range_product',
             # 'has_pattern', 'basico_pattern',
             'clima', 'uso',
