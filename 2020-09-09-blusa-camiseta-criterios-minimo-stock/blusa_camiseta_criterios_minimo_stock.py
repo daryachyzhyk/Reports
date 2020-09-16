@@ -177,10 +177,12 @@ for var_name in var_list[2:]:
     df_var_thr_max['n'] = 1
     n_div = len(df['date'].unique())
 
-    df_var_thr_min_fam = df_var_thr_min.groupby(['family_desc', var_name]).agg({'n': 'sum'}).reset_index()
+    df_var_thr_min_fam = df_var_thr_min.groupby(['family_desc', var_name]).agg({'n': 'sum',
+                                                                                'demanda_pct': 'mean'}).reset_index()
     df_var_thr_min_fam['n'] = df_var_thr_min_fam['n'] / n_div
 
-    df_var_thr_max_fam = df_var_thr_max.groupby(['family_desc', var_name]).agg({'n': 'sum'}).reset_index()
+    df_var_thr_max_fam = df_var_thr_max.groupby(['family_desc', var_name]).agg({'n': 'sum',
+                                                                                'demanda_pct': 'mean'}).reset_index()
     df_var_thr_max_fam['n'] = df_var_thr_max_fam['n'] / n_div
 
     df_var_demand_low = df_var_thr_min_fam[df_var_thr_min_fam['n'] >= threshols_days]
@@ -204,8 +206,8 @@ for var_name in var_list[2:]:
 
     # save
 
-    df_return.to_csv(os.path.join(path_results, 'blusa_camiseta_low_hight_demand.csv'))
-    df_threshold.to_csv(os.path.join(path_results, 'blusa_camiseta_threshold_pct.csv'))
+    df_return.to_csv(os.path.join(path_results, 'blusa_camiseta_low_hight_demand_pct.csv'))
+    df_threshold.to_csv(os.path.join(path_results, 'blusa_camiseta_threshold_pct_pct.csv'))
 
 
 
