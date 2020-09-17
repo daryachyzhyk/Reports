@@ -124,31 +124,28 @@ var_list = ['reference', 'family_desc', 'size',
             'clima', 'uso',
             'estilo_producto',
             'acabado']
-var_list_aux = ['reference', 'family_desc', 'size', 'pattern']
-var_list_cat = ['aventurera', 'basico', 'fit',  'pattern','origen', 'color_group', 'color_category',
-            'price_range_product']
-var_list_opt = [climate_cold_weather	climate_soft_cold_weather	climate_soft_warm_weather	climate_soft_weather	climate_warm_weather,
-estilo_boho	estilo_casual	estilo_clasico	estilo_minimal	estilo_noche	estilo_street,
-'uso_administrativa', 'uso_eventos', 'uso_noche', 'uso_tiempo_libre', 'uso_working_girl',
-'estilo_boho',	'estilo_casual', 'estilo_clasico', 'estilo_minimal', 'estilo_noche', 'estilo_street',
-acabado_acolchado	acabado_agradable	acabado_arrugado	acabado_brillante	acabado_calado	acabado_canale	acabado_charol	acabado_desgastado	acabado_drapeado	acabado_encerado	acabado_impermeable	acabado_jaspeado	acabado_metalizado	acabado_parches	acabado_plisado	acabado_roto	acabado_tablas	acabado_tornasolado	acabado_transparente
+
+var_list_aux = ['reference', 'family_desc', 'size']
+# var_list_cat = ['clima', 'aventurera', 'basico', 'fit', 'pattern', 'origen', 'color_group', 'color_category',
+#                 'price_range_product']
+#
+# var_list_opt = [#'climate_cold_weather',	'climate_soft_cold_weather', 'climate_soft_warm_weather',
+#                 #'climate_soft_weather', 'climate_warm_weather',
+#                 'estilo_boho', 'estilo_casual', 'estilo_clasico', 'estilo_minimal', 'estilo_noche', 'estilo_street',
+#                 'uso_administrativa', 'uso_eventos', 'uso_noche', 'uso_tiempo_libre', 'uso_working_girl',
+#                 'estilo_boho',	'estilo_casual', 'estilo_clasico', 'estilo_minimal', 'estilo_noche', 'estilo_street',
+#                 'acabado_acolchado', 'acabado_agradable', 'acabado_arrugado', 'acabado_brillante', 'acabado_calado',
+#                 'acabado_canale', 'acabado_charol', 'acabado_desgastado', 'acabado_drapeado', 'acabado_encerado',
+#                 'acabado_impermeable', 'acabado_jaspeado', 'acabado_metalizado', 'acabado_parches', 'acabado_plisado',
+#                 'acabado_roto', 'acabado_tablas', 'acabado_tornasolado', 'acabado_transparente']
+
+var_list_cat = ['clima', 'aventurera', 'basico', 'estilo_producto', 'fit', 'uso', 'pattern', 'origen', 'color_group',
+                'color_category', 'price_range_product', 'tejido', 'acabado']
 
 
-]
+var_list_opt = []
 
-
-var_list = ['reference', 'family_desc', 'size',
-
-            'aventurera', 'basico', 'composicion',
-            # 'estilo_boho',	'estilo_casual', 'estilo_clasico', 'estilo_minimal', 'estilo_noche', 'estilo_street',
-            'fit', 'pattern', 'tejido',
-            # 'uso_administrativa', 'uso_eventos', 'uso_noche', 'uso_tiempo_libre', 'uso_working_girl',
-            'color', 'color_group', 'color_category',
-            'price_range_product',
-            # 'has_pattern', 'basico_pattern',
-            'clima', 'uso',
-            'estilo_producto',
-            'acabado']
+var_list = var_list_aux + var_list_cat + var_list_opt
 
 
 
@@ -169,18 +166,74 @@ df = pd.merge(df_demanda_stock,
 
 df = df[df['family_desc'].isin(family_list)]
 
+# dummies
 
-# eliminate good dates for CAMISETA and good date for BLUSA
+df = pd.get_dummies(df, columns=var_list_cat) # , prefix='', prefix_sep=''
 
-df = df.drop(df[(df['family_desc'] == 'CAMISETA') & (~df['date'].isin(date_list_camiseta))].index)
+df['stock_actual'] = df['real_stock']
+df.loc[df['stock_actual'] < df['demanda'] , 'stock_actual'] = df['demanda']
 
-df = df.drop(df[(df['family_desc'] == 'BLUSA') & (~df['date'].isin(date_list_blusa))].index)
+
+
+test = df[(df['family_desc']=='VESTIDO') & (df['date']=='2020-07-24') & (df['size']=='XXXL')]
+
+var_group_aux = ['date', 'demanda', 'real_stock', 'family_desc', 'size', 'stock_actual']
+var_group = list(set(df.columns.to_list()) - set(var_group_aux))
+
+
+
+
+cols = ['fit_entallado', 'fit_recto', 'fit_holgado', 'fit_oversize']
+test2 = test[cols].mul(test['demanda'], axis=0).add_suffix('_demanda')
+test3 = test[cols].mul(test['stock_actual'], axis=0).add_suffix('_st_act')
+test_var = pd.concat([test[var_group_aux], test2], axis=1)
+test_var = pd.concat([test_var, test3], axis=1)
+
+
+
+for col in ['fit_entallado']:#var_group:
+    columns = var_group_aux + [col]
+    df_var = test[columns]
+    # TODO: add sufix
+
+    df_var[col + '_demanda'] = df_var[col] * df_var['demanda']
+    df_var[col + '_st_real'] = df_var[col] * df_var['real_stock']
+    df_var[col + '_st_act'] = df_var[col] * df_var['stock_actual']
+
+    df_gr = df_var.groupby
+
+
+
+
+
+
+
+
+
+df_gr = df.groupby(['date', 'family_desc', 'size']).sum().reset_index()
+
+
+
+
+test = df[(df['family_desc']=='VESTIDO') & (df['date']=='2020-07-24') & (df['size']=='XXXL')]
+
+var_list_aux = ['reference', 'family_desc', 'size']
+var_group = set(df.columns.to_list()) - set(['date', 'reference', 'demanda', 'real_stock', 'family_desc', 'size', 'stock_actual'])
+
+
+
+
+# # eliminate good dates for CAMISETA and good date for BLUSA
+#
+# df = df.drop(df[(df['family_desc'] == 'CAMISETA') & (~df['date'].isin(date_list_camiseta))].index)
+#
+# df = df.drop(df[(df['family_desc'] == 'BLUSA') & (~df['date'].isin(date_list_blusa))].index)
 
 
 df_return = pd.DataFrame([])
 df_threshold = pd.DataFrame([])
 
-
+var_dummies = set(df.columns.to_list()) - set(['date', 'reference', 'demanda', 'real_stock', 'family_desc', 'size'])
 
 ###############################################
 ###############################################
