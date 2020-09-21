@@ -9,8 +9,10 @@ Compare % of sent units to available in stock.
 '''
 
 
-import pandas as pd
+
 import os
+import pandas as pd
+import numpy as np
 
 
 # path
@@ -175,141 +177,165 @@ df.loc[df['stock_actual'] < df['demanda'] , 'stock_actual'] = df['demanda']
 
 
 
-test = df[(df['family_desc']=='VESTIDO') & (df['date']=='2020-07-24') & (df['size']=='XXXL')]
+# test = df[(df['family_desc']=='VESTIDO') & (df['date']=='2020-07-24') & (df['size']=='XXXL')]
 
 var_group_aux = ['date', 'demanda', 'real_stock', 'family_desc', 'size', 'stock_actual']
-var_group = list(set(df.columns.to_list()) - set(var_group_aux))
+var_group = list(set(df.columns.to_list()) - set(var_group_aux) - set(['reference']))
 
 
+#
+#
+# cols = ['fit_entallado', 'fit_recto', 'fit_holgado', 'fit_oversize']
+# test2 = test[cols].mul(test['demanda'], axis=0).add_suffix('_demanda')
+# test3 = test[cols].mul(test['stock_actual'], axis=0).add_suffix('_st_act')
+# test_var = pd.concat([test[var_group_aux], test2], axis=1)
+# test_var = pd.concat([test_var, test3], axis=1)
 
 
-cols = ['fit_entallado', 'fit_recto', 'fit_holgado', 'fit_oversize']
-test2 = test[cols].mul(test['demanda'], axis=0).add_suffix('_demanda')
-test3 = test[cols].mul(test['stock_actual'], axis=0).add_suffix('_st_act')
-test_var = pd.concat([test[var_group_aux], test2], axis=1)
-test_var = pd.concat([test_var, test3], axis=1)
+df_var_pct = pd.DataFrame(columns=['date', 'family_desc', 'size'])
+df_var_pct_col = pd.DataFrame([])
 
-
-
-for col in ['fit_entallado']:#var_group:
+for col in ['fit_entallado', 'fit_recto', 'fit_holgado', 'fit_oversize']: # var_group: #
     columns = var_group_aux + [col]
-    df_var = test[columns]
-    # TODO: add sufix
+    df_var = df[columns].copy()
+
 
     df_var[col + '_demanda'] = df_var[col] * df_var['demanda']
-    df_var[col + '_st_real'] = df_var[col] * df_var['real_stock']
-    df_var[col + '_st_act'] = df_var[col] * df_var['stock_actual']
+    df_var[col + '_stk_real'] = df_var[col] * df_var['real_stock']
+    df_var[col + '_stk_act'] = df_var[col] * df_var['stock_actual']
 
-    df_gr = df_var.groupby
+    df_gr = df_var.groupby(['date', 'family_desc', 'size']).sum().reset_index()
+    df_gr[col + '_env_stk_real_pct'] = df_gr[col + '_demanda'] / df_gr[col + '_stk_real']
+    df_gr[col + '_env_stk_act_pct'] = df_gr[col + '_demanda'] / df_gr[col + '_stk_act']
 
+    df_gr[col + '_stk_opt_pct'] = df_gr[col + '_stk_act'] / df_gr['stock_actual']
+    df_gr[col + '_env_stk_var_pct'] = df_gr[col + '_env_stk_act_pct'] * df_gr[col + '_stk_opt_pct']
 
-
-
-
-
-
-
-
-df_gr = df.groupby(['date', 'family_desc', 'size']).sum().reset_index()
-
-
+    df_var_pct = df_var_pct.merge(df_gr[['date', 'family_desc', 'size',  col + '_stk_act', col + '_env_stk_real_pct',
+                                         col + '_env_stk_act_pct', col + '_stk_opt_pct', col + '_env_stk_var_pct']],
+                                  on=['date', 'family_desc', 'size'],
+                                  how='outer')
 
 
-test = df[(df['family_desc']=='VESTIDO') & (df['date']=='2020-07-24') & (df['size']=='XXXL')]
-
-var_list_aux = ['reference', 'family_desc', 'size']
-var_group = set(df.columns.to_list()) - set(['date', 'reference', 'demanda', 'real_stock', 'family_desc', 'size', 'stock_actual'])
+    # save as column
+    df_var_pct_col
 
 
 
+df_var_pct = df_var_pct.fillna(0)
 
-# # eliminate good dates for CAMISETA and good date for BLUSA
+df_var_pct_ps = df_var_pct.merge(df_feedback,
+                                 on=['date', 'family_desc', 'size'],
+                                 how='outer')
+
+
+
+df_var_pct_ps = df_var_pct_ps.fillna(0)
+df_var_pct_ps = df_var_pct_ps.replace(np.inf, 1)
+
+# save
+df_var_pct_ps.to_csv(os.path.join(path_results, 'date_family_size_var_pct_psfeedback.csv'), index=False)
+
+
+
+
 #
-# df = df.drop(df[(df['family_desc'] == 'CAMISETA') & (~df['date'].isin(date_list_camiseta))].index)
 #
-# df = df.drop(df[(df['family_desc'] == 'BLUSA') & (~df['date'].isin(date_list_blusa))].index)
+# test = df[(df['family_desc']=='VESTIDO') & (df['date']=='2020-07-24') & (df['size']=='XXXL')]
+#
+# var_list_aux = ['reference', 'family_desc', 'size']
+# var_group = set(df.columns.to_list()) - set(['date', 'reference', 'demanda', 'real_stock', 'family_desc', 'size', 'stock_actual'])
+#
+#
+#
+#
+# # # eliminate good dates for CAMISETA and good date for BLUSA
+# #
+# # df = df.drop(df[(df['family_desc'] == 'CAMISETA') & (~df['date'].isin(date_list_camiseta))].index)
+# #
+# # df = df.drop(df[(df['family_desc'] == 'BLUSA') & (~df['date'].isin(date_list_blusa))].index)
+#
+#
+# df_return = pd.DataFrame([])
+# df_threshold = pd.DataFrame([])
+#
+# var_dummies = set(df.columns.to_list()) - set(['date', 'reference', 'demanda', 'real_stock', 'family_desc', 'size'])
+#
+# ###############################################
+# ###############################################
+#
+# for var_name in var_list[2:]:
+#     print(var_name)
+#     # var_name = 'aventurera'
+#
+#     df_var = df.groupby(['date', 'family_desc', var_name]).agg({'demanda': 'sum',
+#                                                                  'real_stock': 'sum'}).reset_index()
+#
+#     df_var['demanda_pct'] = df_var['demanda'] / df_var['real_stock'] * 100
+#
+#
+#     df_var['demanda_pct_w'] = df_var['demanda_pct'] / df_var['real_stock']
+#
+#     df_var.loc[(df_var['demanda'] == 0) & (df_var['real_stock'] != 0), 'demanda_pct'] = 0
+#     df_var.loc[(df_var['demanda'] != 0) & (df_var['real_stock'] == 0), 'demanda_pct'] = 1
+#
+#     threshold_min = 20
+#
+#     threshold_max = 80
+#
+#     threshols_days = 0.3
+#
+#
+#     df_var_thr = df_var[(df_var['demanda_pct'] < threshold_min) | (df_var['demanda_pct'] > threshold_max)]
+#     df_var_thr['var_name'] = var_name
+#     df_var_thr = df_var_thr.rename(columns={var_name: 'var_option'})
+#     df_threshold = df_threshold.append(df_var_thr)
+#
+#
+#     df_var_thr_min = df_var[df_var['demanda_pct'] < threshold_min]
+#
+#     df_var_thr_max = df_var[df_var['demanda_pct'] > threshold_max]
+#
+#
+#
+#
+#
+#
+#     df_var_thr_min['n'] = 1
+#     df_var_thr_max['n'] = 1
+#     n_div = len(df['date'].unique())
+#
+#     df_var_thr_min_fam = df_var_thr_min.groupby(['family_desc', var_name]).agg({'n': 'sum',
+#                                                                                 'demanda_pct': 'mean'}).reset_index()
+#     df_var_thr_min_fam['n'] = df_var_thr_min_fam['n'] / n_div
+#
+#     df_var_thr_max_fam = df_var_thr_max.groupby(['family_desc', var_name]).agg({'n': 'sum',
+#                                                                                 'demanda_pct': 'mean'}).reset_index()
+#     df_var_thr_max_fam['n'] = df_var_thr_max_fam['n'] / n_div
+#
+#     df_var_demand_low = df_var_thr_min_fam[df_var_thr_min_fam['n'] >= threshols_days]
+#
+#
+#     df_var_demand_high = df_var_thr_max_fam[df_var_thr_max_fam['n'] >= threshols_days]
+#
+#     df_var_demand_low['var_type'] = var_name
+#     df_var_demand_low['problem_type'] = 'demand_low'
+#
+#     df_var_demand_high['var_type'] = var_name
+#     df_var_demand_high['problem_type'] = 'demand_high'
+#
+#     df_var_demand_low = df_var_demand_low.rename(columns={var_name: 'var_name'})
+#     df_var_demand_high = df_var_demand_high.rename(columns={var_name: 'var_name'})
+#
+#     df_return = df_return.append(df_var_demand_low)
+#     df_return = df_return.append(df_var_demand_high)
+#
+#     # df_return = df_return.rename(columns={var_name: 'var_name'})
+#
+#     # save
 
-
-df_return = pd.DataFrame([])
-df_threshold = pd.DataFrame([])
-
-var_dummies = set(df.columns.to_list()) - set(['date', 'reference', 'demanda', 'real_stock', 'family_desc', 'size'])
-
-###############################################
-###############################################
-
-for var_name in var_list[2:]:
-    print(var_name)
-    # var_name = 'aventurera'
-
-    df_var = df.groupby(['date', 'family_desc', var_name]).agg({'demanda': 'sum',
-                                                                 'real_stock': 'sum'}).reset_index()
-
-    df_var['demanda_pct'] = df_var['demanda'] / df_var['real_stock'] * 100
-
-
-    df_var['demanda_pct_w'] = df_var['demanda_pct'] / df_var['real_stock']
-
-    df_var.loc[(df_var['demanda'] == 0) & (df_var['real_stock'] != 0), 'demanda_pct'] = 0
-    df_var.loc[(df_var['demanda'] != 0) & (df_var['real_stock'] == 0), 'demanda_pct'] = 1
-
-    threshold_min = 20
-
-    threshold_max = 80
-
-    threshols_days = 0.3
-
-
-    df_var_thr = df_var[(df_var['demanda_pct'] < threshold_min) | (df_var['demanda_pct'] > threshold_max)]
-    df_var_thr['var_name'] = var_name
-    df_var_thr = df_var_thr.rename(columns={var_name: 'var_option'})
-    df_threshold = df_threshold.append(df_var_thr)
-
-
-    df_var_thr_min = df_var[df_var['demanda_pct'] < threshold_min]
-
-    df_var_thr_max = df_var[df_var['demanda_pct'] > threshold_max]
-
-
-
-
-
-
-    df_var_thr_min['n'] = 1
-    df_var_thr_max['n'] = 1
-    n_div = len(df['date'].unique())
-
-    df_var_thr_min_fam = df_var_thr_min.groupby(['family_desc', var_name]).agg({'n': 'sum',
-                                                                                'demanda_pct': 'mean'}).reset_index()
-    df_var_thr_min_fam['n'] = df_var_thr_min_fam['n'] / n_div
-
-    df_var_thr_max_fam = df_var_thr_max.groupby(['family_desc', var_name]).agg({'n': 'sum',
-                                                                                'demanda_pct': 'mean'}).reset_index()
-    df_var_thr_max_fam['n'] = df_var_thr_max_fam['n'] / n_div
-
-    df_var_demand_low = df_var_thr_min_fam[df_var_thr_min_fam['n'] >= threshols_days]
-
-
-    df_var_demand_high = df_var_thr_max_fam[df_var_thr_max_fam['n'] >= threshols_days]
-
-    df_var_demand_low['var_type'] = var_name
-    df_var_demand_low['problem_type'] = 'demand_low'
-
-    df_var_demand_high['var_type'] = var_name
-    df_var_demand_high['problem_type'] = 'demand_high'
-
-    df_var_demand_low = df_var_demand_low.rename(columns={var_name: 'var_name'})
-    df_var_demand_high = df_var_demand_high.rename(columns={var_name: 'var_name'})
-
-    df_return = df_return.append(df_var_demand_low)
-    df_return = df_return.append(df_var_demand_high)
-
-    # df_return = df_return.rename(columns={var_name: 'var_name'})
-
-    # save
-
-    df_return.to_csv(os.path.join(path_results, 'blusa_camiseta_low_hight_demand_pct.csv'))
-    df_threshold.to_csv(os.path.join(path_results, 'blusa_camiseta_threshold_pct_pct.csv'))
+    # df_return.to_csv(os.path.join(path_results, 'blusa_camiseta_low_hight_demand_pct.csv'))
+    # df_threshold.to_csv(os.path.join(path_results, 'blusa_camiseta_threshold_pct_pct.csv'))
 
 
 
