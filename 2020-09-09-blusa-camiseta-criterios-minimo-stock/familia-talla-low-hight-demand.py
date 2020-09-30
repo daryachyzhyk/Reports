@@ -141,8 +141,14 @@ var_list_aux = ['reference', 'family_desc', 'size']
 #                 'acabado_impermeable', 'acabado_jaspeado', 'acabado_metalizado', 'acabado_parches', 'acabado_plisado',
 #                 'acabado_roto', 'acabado_tablas', 'acabado_tornasolado', 'acabado_transparente']
 
-var_list_cat = ['clima', 'aventurera', 'basico', 'estilo_producto', 'fit', 'uso', 'pattern', 'origen', 'color_group',
-                'color_category', 'price_range_product', 'tejido', 'acabado']
+var_list_cat = ['clima', 'aventurera', 'basico', 'estilo_producto', 'fit', 'uso',
+                # 'pattern',
+                'origen',
+                'color_group',
+                'color_category', 'price_range_product',
+                # 'tejido',
+                'acabado'
+                ]
 
 
 var_list_opt = []
@@ -195,47 +201,98 @@ var_group = list(set(df.columns.to_list()) - set(var_group_aux) - set(['referenc
 df_var_pct = pd.DataFrame(columns=['date', 'family_desc', 'size'])
 df_var_pct_col = pd.DataFrame([])
 
-for col in ['fit_entallado', 'fit_recto', 'fit_holgado', 'fit_oversize']: # var_group: #
+# test
+# df_test = df.copy()
+#
+#
+#
+#
+#
+# df = df_test.copy()
+# df = df[(df['family_desc'] == 'VESTIDO') & (df['date'] == '2020-07-24') & (df['size']=='XXXL')]
+#
+# pd.set_option('display.max_columns', None)
+# df = df[['family_desc', 'size', 'demanda', 'real_stock', 'stock_actual', 'fit_entallado', 'fit_recto', 'fit_holgado', 'fit_oversize', 'date']]
+
+for col in var_group: # var_group: # ['fit_entallado', 'fit_recto', 'fit_holgado', 'fit_oversize']
+    print(col)
     columns = var_group_aux + [col]
     df_var = df[columns].copy()
 
 
     df_var[col + '_demanda'] = df_var[col] * df_var['demanda']
-    df_var[col + '_stk_real'] = df_var[col] * df_var['real_stock']
-    df_var[col + '_stk_act'] = df_var[col] * df_var['stock_actual']
+    df_var[col + '_stock_real'] = df_var[col] * df_var['real_stock']
+    df_var[col + '_stock_actual'] = df_var[col] * df_var['stock_actual']
 
     df_gr = df_var.groupby(['date', 'family_desc', 'size']).sum().reset_index()
-    df_gr[col + '_env_stk_real_pct'] = df_gr[col + '_demanda'] / df_gr[col + '_stk_real']
-    df_gr[col + '_env_stk_act_pct'] = df_gr[col + '_demanda'] / df_gr[col + '_stk_act']
+    # stock real, stock appeared in snapshots
+    # stock actual, in case when number of items in snapshots is less then in stock_real,
 
-    df_gr[col + '_stk_opt_pct'] = df_gr[col + '_stk_act'] / df_gr['stock_actual']
-    df_gr[col + '_env_stk_var_pct'] = df_gr[col + '_env_stk_act_pct'] * df_gr[col + '_stk_opt_pct']
+    # percentage of variable option (option "holgado" of variable "fit") shipped of all real stock (snapshot),
+    # could be more then 100%
+    df_gr[col + '_shipped_stock_real_pct'] = df_gr[col + '_demanda'] / df_gr[col + '_stock_real']
 
-    df_var_pct = df_var_pct.merge(df_gr[['date', 'family_desc', 'size',  col + '_stk_act', col + '_env_stk_real_pct',
-                                         col + '_env_stk_act_pct', col + '_stk_opt_pct', col + '_env_stk_var_pct']],
+    # percentage of variable option (option "holgado" of variable "fit") shipped of all actual stock (snapshot),
+    # could be 100% maximum
+    df_gr[col + '_shipped_stock_actual_pct'] = df_gr[col + '_demanda'] / df_gr[col + '_stock_actual']
+
+    # percentage of option (option 'holgado') of variable ('fit') stock, could be 100% maximum
+    df_gr[col + '_varstock_pct'] = df_gr[col + '_stock_actual'] / df_gr['stock_actual']
+
+    # percentage of option (option 'holgado') shipped of variable ('fit') stock
+
+
+
+    df_gr[col + '_shipped_weight_pct'] = df_gr[col + '_shipped_stock_actual_pct'] * df_gr[col + '_varstock_pct']
+
+    df_gr = df_gr.fillna(0)
+
+    df_gr = df_gr.replace(np.inf, 10.0)
+
+    df_var_pct = df_var_pct.merge(df_gr[['date', 'family_desc', 'size',
+                                         col + '_stock_actual',
+                                         col + '_shipped_stock_real_pct',
+                                         col + '_shipped_stock_actual_pct',
+                                         col + '_varstock_pct',
+                                         col + '_shipped_weight_pct']],
                                   on=['date', 'family_desc', 'size'],
                                   how='outer')
 
+    # TODO: save as column
 
-    # save as column
-    df_var_pct_col
+    df_temp = df_var_pct[['date', 'family_desc', 'size']]
+    df_temp['varoption_shipped_stock_real_pct'] = df_var_pct[col + '_shipped_stock_real_pct']
+    df_temp['varoption_shipped_stock_actual_pct'] = df_var_pct[col + '_shipped_stock_actual_pct']
 
+    df_temp['varoption_varstock_pct'] = df_var_pct[col + '_varstock_pct']
+    df_temp['varoption_shipped_weight_pct'] = df_var_pct[col + '_shipped_weight_pct']
 
+    df_temp['varoption'] = col
+    df_var_pct_col = df_var_pct_col.append(df_temp)
+
+# TODO df_var_pct_col change inf to 10, nan to 0
 
 df_var_pct = df_var_pct.fillna(0)
+df_var_pct_col = df_var_pct_col.fillna(0)
+
+df_var_pct_col = df_var_pct_col.replace(np.inf, 10.0)
 
 df_var_pct_ps = df_var_pct.merge(df_feedback,
                                  on=['date', 'family_desc', 'size'],
                                  how='outer')
 
-
+df_var_pct_col_ps = df_var_pct_col.merge(df_feedback,
+                                 on=['date', 'family_desc', 'size'],
+                                 how='outer')
 
 df_var_pct_ps = df_var_pct_ps.fillna(0)
 df_var_pct_ps = df_var_pct_ps.replace(np.inf, 1)
 
+# TODO merge df_var_pct_col with PS labels
+
 # save
 df_var_pct_ps.to_csv(os.path.join(path_results, 'date_family_size_var_pct_psfeedback.csv'), index=False)
-
+df_var_pct_col_ps.to_csv(os.path.join(path_results, 'date_family_size_var_pct_col_psfeedback.csv'), index=False)
 
 
 
