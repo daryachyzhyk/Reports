@@ -15,12 +15,21 @@ from sklearn.externals.six import StringIO
 
 import pydotplus
 
-
+# which pct is more userfull
 path = ('/home/darya/Documents/Reports/2020-09-09-blusa-camiseta-criterios-minimo-stock')
+path_save = ('/home/darya/Documents/Reports/2020-09-09-blusa-camiseta-criterios-minimo-stock/pct')
 
-df_raw = pd.read_csv(os.path.join(path, 'date_family_size_var_pct_psfeedback.csv'))
+df_raw = pd.read_csv(os.path.join(path, 'date_family_size_var_pct_col_psfeedback.csv'))
+
+# df_raw = pd.read_csv(os.path.join(path, 'date_family_size_var_pct_psfeedback.csv'))
 
 
+if 'varoption' in df_raw.columns:
+    df_raw = df_raw.drop(columns=['varoption'])
+
+df_raw = df_raw[~df_raw['stock_nok'].isnull()]
+
+df_raw = df_raw.fillna(0)
 y = df_raw['stock_nok']
 
 X = df_raw.drop(columns=['date', 'family_desc', 'size', 'stock_nok'])
@@ -82,9 +91,9 @@ for max_depth in max_depth_list:
     name_graph_pdf = name_graph + '.pdf'
     name_graph_jpg = name_graph + '.jpg'
 
-    graph.write_png(os.path.join(path, name_graph_png))
-    graph.write_jpg(os.path.join(path, name_graph_jpg))
-    graph.write_pdf(os.path.join(path, name_graph_pdf))
+    graph.write_png(os.path.join(path_save, name_graph_png))
+    graph.write_jpg(os.path.join(path_save, name_graph_jpg))
+    graph.write_pdf(os.path.join(path_save, name_graph_pdf))
 
     #######################################################################################################################
     # Extract graph as text
@@ -105,14 +114,14 @@ for max_depth in max_depth_list:
 
     importance_file_name = 'stock_nok_DecisionTree_graph_maxdepth_' + str(
         max_depth) + '_feature_importance' + '.csv'
-    df_important.to_csv(os.path.join(path, importance_file_name))
+    df_important.to_csv(os.path.join(path_save, importance_file_name))
 
     plot_importance = df_important.plot(kind='bar', figsize=(10, 5), fontsize=14)
 
     importance_file_name_plot = 'stock_nok_DecisionTree_graph_maxdepth_' + str(
         max_depth) + '_feature_importance' + '.png'
     fig = plot_importance.get_figure()
-    fig.savefig(os.path.join(path, importance_file_name_plot), bbox_inches='tight')
+    fig.savefig(os.path.join(path_save, importance_file_name_plot), bbox_inches='tight')
 
     #######################################################################################################################
     # Extract rules for class 1
@@ -183,8 +192,8 @@ for max_depth in max_depth_list:
     name_all_rules = 'stock_nok_DecisionTree_maxdepth_' + str(max_depth) + '_rules_class_all' + '.csv'
     name_c1_rules = 'stock_nok_DecisionTree_maxdepth_' + str(max_depth) + '_rules_class_nok' + '.csv'
 
-    df_rules.to_csv(os.path.join(path, name_all_rules))
-    df_rules_class1.to_csv(os.path.join(path, name_c1_rules))
+    df_rules.to_csv(os.path.join(path_save, name_all_rules))
+    df_rules_class1.to_csv(os.path.join(path_save, name_c1_rules))
 
 
 
