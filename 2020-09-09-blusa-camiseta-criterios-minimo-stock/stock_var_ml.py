@@ -15,14 +15,60 @@ from sklearn.externals.six import StringIO
 
 import pydotplus
 
-# which pct is more userfull
+# 1which pct is more userfull
 path = ('/home/darya/Documents/Reports/2020-09-09-blusa-camiseta-criterios-minimo-stock')
 path_save = ('/home/darya/Documents/Reports/2020-09-09-blusa-camiseta-criterios-minimo-stock/pct')
 
 df_raw = pd.read_csv(os.path.join(path, 'date_family_size_var_pct_col_psfeedback.csv'))
 
-# df_raw = pd.read_csv(os.path.join(path, 'date_family_size_var_pct_psfeedback.csv'))
+# 2
+path_save = ('/home/darya/Documents/Reports/2020-09-09-blusa-camiseta-criterios-minimo-stock/variables')
+df_raw = pd.read_csv(os.path.join(path, 'date_family_size_var_pct_psfeedback.csv'))
 
+var_group = ['price_range_product_1.0',
+ 'color_group_PINK',
+ 'color_group_GREEN',
+ 'clima_0.5',
+ 'origen_F',
+ 'fit_holgado',
+ 'color_group_BROWN',
+ 'color_group_YELLOW',
+ 'color_group_GREY',
+ 'clima_1.0',
+ 'price_range_product_3.0',
+ 'color_category_Nota de color',
+ 'clima_1.5',
+ 'color_group_ORANGE',
+ 'clima_0.0',
+ 'color_category_Mixto',
+ 'color_category_Neutro claro',
+ 'color_category_Neutro oscuro',
+ 'color_category_Acento de color',
+ 'fit_entallado',
+ 'color_group_WHITE',
+ 'color_group_BLACK',
+ 'clima_2.5',
+ 'color_group_RED',
+ 'fit_recto',
+ 'clima_3.0',
+ 'color_group_BEIGE',
+ 'origen_M',
+ 'fit_oversize',
+ 'color_group_PURPLE',
+ 'color_category_Vibrante',
+ 'price_range_product_2.0',
+ 'origen_P',
+ 'origen_NM',
+ 'color_group_BLUE',
+ 'clima_2.0',
+ 'color_group_LIGHT GREEN']
+
+
+df_raw_col = df_raw[['date', 'family_desc', 'size', 'stock_nok']]
+for col in var_group:
+    df_raw_col = df_raw_col.join(df_raw[col + '_shipped_weight_pct'])
+
+df_raw = df_raw_col.copy()
 
 if 'varoption' in df_raw.columns:
     df_raw = df_raw.drop(columns=['varoption'])
