@@ -141,6 +141,7 @@ var_list_aux = ['reference', 'family_desc', 'size']
 #                 'acabado_impermeable', 'acabado_jaspeado', 'acabado_metalizado', 'acabado_parches', 'acabado_plisado',
 #                 'acabado_roto', 'acabado_tablas', 'acabado_tornasolado', 'acabado_transparente']
 
+# TODO add 'composicion', has_pattern
 var_list_cat = ['clima', 'aventurera', 'basico', 'estilo_producto', 'fit', 'uso',
                 # 'pattern',
                 'origen',
