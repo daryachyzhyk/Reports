@@ -9,16 +9,14 @@ Compare % of sent units to available in stock.
 '''
 
 
-
 import os
 import pandas as pd
 import numpy as np
 
-
+######################################################################################################################
 # path
 
 file_demanda = ('/var/lib/lookiero/stock/stock_tool/demanda_preprocessed.csv.gz')
-
 file_product = ('/var/lib/lookiero/stock/stock_tool/productos_preprocessed.csv.gz')
 file_stock = ('/var/lib/lookiero/stock/stock_tool/stock.csv.gz')
 
@@ -59,8 +57,6 @@ df_feedback.loc[df_feedback['stock_nok'] != 0, 'stock_nok'] = 1
 family_list = list(set(df_feedback['family_desc']))
 
 date_list = list(set(df_feedback['date']))
-
-
 
 
 #######################################
@@ -141,14 +137,26 @@ var_list_aux = ['reference', 'family_desc', 'size']
 #                 'acabado_impermeable', 'acabado_jaspeado', 'acabado_metalizado', 'acabado_parches', 'acabado_plisado',
 #                 'acabado_roto', 'acabado_tablas', 'acabado_tornasolado', 'acabado_transparente']
 
-# TODO add 'composicion', has_pattern
-var_list_cat = ['clima', 'aventurera', 'basico', 'estilo_producto', 'fit', 'uso',
+# test = pd.read_csv(file_product)
+# test_list = test.columns
+
+# TODO add 'composicion' , corte, grosor, ligero -> all fields are Nan
+var_list_cat = ['clima',
+                # 'aventurera',
+                'basico',
+                'estilo_producto',
+                'fit',
+                'uso',
+                # 'size',
                 # 'pattern',
+                'has_pattern',
+                #'composicion', ??? Nan
                 'origen',
                 'color_group',
                 'color_category', 'price_range_product',
                 # 'tejido',
-                'acabado'
+                'acabado',
+                'premium'
                 ]
 
 
@@ -176,11 +184,14 @@ df = pd.merge(df_demanda_stock,
 df = df[df['family_desc'].isin(family_list)]
 
 # dummies
+df['size_cat'] = df['size']
+var_list_cat.append('size_cat')
+
 
 df = pd.get_dummies(df, columns=var_list_cat) # , prefix='', prefix_sep=''
 
 df['stock_actual'] = df['real_stock']
-df.loc[df['stock_actual'] < df['demanda'] , 'stock_actual'] = df['demanda']
+df.loc[df['stock_actual'] < df['demanda'], 'stock_actual'] = df['demanda']
 
 
 
@@ -294,6 +305,8 @@ df_var_pct_ps = df_var_pct_ps.replace(np.inf, 1)
 # save
 df_var_pct_ps.to_csv(os.path.join(path_results, 'date_family_size_var_pct_psfeedback.csv'), index=False)
 df_var_pct_col_ps.to_csv(os.path.join(path_results, 'date_family_size_var_pct_col_psfeedback.csv'), index=False)
+
+aa = df_var_pct_ps.groupby(['family_desc']).agg({'stock_nok': 'mean'})
 
 
 
