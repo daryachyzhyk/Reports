@@ -12,6 +12,7 @@ Compare % of sent units to available in stock.
 import os
 import pandas as pd
 import numpy as np
+import pickle
 
 ######################################################################################################################
 # path
@@ -307,6 +308,12 @@ df_var_pct_ps.to_csv(os.path.join(path_results, 'date_family_size_var_pct_psfeed
 df_var_pct_col_ps.to_csv(os.path.join(path_results, 'date_family_size_var_pct_col_psfeedback.csv'), index=False)
 
 aa = df_var_pct_ps.groupby(['family_desc']).agg({'stock_nok': 'mean'})
+
+with open(os.path.join(path_results, 'var_list.txt'), "wb") as fp:  # Pickling
+    pickle.dump(var_group, fp)
+
+
+
 
 
 
