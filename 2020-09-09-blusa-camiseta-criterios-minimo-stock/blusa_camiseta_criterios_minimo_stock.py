@@ -11,6 +11,7 @@ Compare % of sent units to available in stock.
 
 import pandas as pd
 import os
+import pickle
 
 
 # path
@@ -208,6 +209,12 @@ for var_name in var_list[2:]:
 
     df_return.to_csv(os.path.join(path_results, 'blusa_camiseta_low_hight_demand_pct.csv'))
     df_threshold.to_csv(os.path.join(path_results, 'blusa_camiseta_threshold_pct_pct.csv'))
+    var_list
+
+    # with open(os.path.join(path_results, 'var_list.txt'), "wb") as fp:  # Pickling
+    #     pickle.dump(var_list, fp)
+
+
 
 
 
