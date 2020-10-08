@@ -7,6 +7,7 @@ import pandas as pd
 import os
 import pickle
 import numpy as np
+from itertools import product
 
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score, precision_score, recall_score, confusion_matrix
 
@@ -22,7 +23,7 @@ path_results = ('/home/darya/Documents/Reports/2020-09-09-blusa-camiseta-criteri
 ##################################################################################################
 # params
 df_raw = pd.read_csv(os.path.join(path, 'date_family_size_var_pct_psfeedback.csv'))
-
+df_raw['size'] = df_raw['size'].str.upper()
 # df_raw.columns = sorted(df_raw.columns)
 
 
@@ -71,7 +72,7 @@ df = df_raw_col.copy()
 #
 # df = df.fillna(0)
 
-df_thr = df[var_list]
+df_threshold = df[var_list]
 
 
 
@@ -80,70 +81,78 @@ size_list = list(df['size'].unique())
 
 # TODO: xs to XS
 df_best_pct_precision = pd.DataFrame([])
+# family_size_list = list(product(df['family_desc'], df['size']))
 
-for family in family_list:
-    for sz in size_list:
-        print(family)
-        print(sz)
-        df_thr = df_thr[(df['family_desc'] == family) & (df['size'] == sz)]
+family_size_list = list(zip(df['family_desc'], df['size']))
 
-        y_true = df[(df['family_desc'] == family) & (df['size'] == sz)]['stock_nok']
+for family_size in family_size_list:
+    # for sz in size_list:
+    family = family_size[0]
+    sz = family_size[1]
+    print(family)
+    print(sz)
+    df_thr = df_threshold[(df['family_desc'] == family) & (df['size'] == sz)]
 
-        accuracy_list = []
-        f1_score_list = []
+    y_true = df[(df['family_desc'] == family) & (df['size'] == sz)]['stock_nok']
 
-        roc_list = []
-        precision_list = []
-        recall_list = []
+    accuracy_list = []
+    f1_score_list = []
 
-
-
-        i = -1
-        # list_thresholds = [0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-        list_thresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-        for threshold in list_thresholds:
-            print(threshold)
-            i = i + 1
-            df_aux = np.where(df_thr > threshold, 1, 0)
-            df_aux = pd.DataFrame(df_aux, columns=df_thr.columns, index=df_thr.index)
-            # df_aux = df_aux.fillna(0)
-            # df_iqual = df_aux.eq(df['stock_nok'], axis=0)
-            # TODO add sklearn metrics
-            accuracy_col = []
-            f1_score_col = []
-
-            roc_col = []
-            precision_col = []
-            recall_col = []
-
-            for col in df_aux.columns:
-                accuracy_col.append(accuracy_score(y_true, df_aux[col]))
-                f1_score_col.append(f1_score(y_true, df_aux[col]))
-
-                roc_col.append(roc_auc_score(y_true, df_aux[col]))
-                precision_col.append(precision_score(y_true, df_aux[col]))
-                recall_col.append(recall_score(y_true, df_aux[col]))
+    roc_list = []
+    precision_list = []
+    recall_list = []
 
 
 
-            accuracy_list.append(accuracy_col)
-            f1_score_list.append(f1_score_col)
+    i = -1
+    # list_thresholds = [0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    list_thresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    for threshold in list_thresholds:
+        print(threshold)
+        i = i + 1
+        df_aux = np.where(df_thr > threshold, 1, 0)
+        df_aux = pd.DataFrame(df_aux, columns=df_thr.columns, index=df_thr.index)
+        # df_aux = df_aux.fillna(0)
+        # df_iqual = df_aux.eq(df['stock_nok'], axis=0)
+        # TODO add sklearn metrics
+        accuracy_col = []
+        f1_score_col = []
 
-            roc_list.append(roc_col)
-            precision_list.append(precision_col)
-            recall_list.append(recall_col)
+        roc_col = []
+        precision_col = []
+        recall_col = []
 
-        df_accuracy = pd.DataFrame(accuracy_list, columns=sorted(df_thr.columns), index=list_thresholds)
-        df_f1_score = pd.DataFrame(f1_score_list, columns=sorted(df_thr.columns), index=list_thresholds)
+        for col in df_aux.columns:
+            accuracy_col.append(accuracy_score(y_true, df_aux[col]))
+            f1_score_col.append(f1_score(y_true, df_aux[col]))
 
-        df_roc = pd.DataFrame(roc_list, columns=sorted(df_thr.columns), index=list_thresholds)
-        df_precision = pd.DataFrame(precision_list, columns=sorted(df_thr.columns), index=list_thresholds)
-        df_recall = pd.DataFrame(recall_list, columns=sorted(df_thr.columns), index=list_thresholds)
+            roc_col.append(roc_auc_score(y_true, df_aux[col]))
+            precision_col.append(precision_score(y_true, df_aux[col], zero_division=0))
+            recall_col.append(recall_score(y_true, df_aux[col]))
 
-        best_pct_precision = df_precision.idxmax()
 
-        df_best_pct_precision = best_pct_precision_list.append(best_pct_precision, ignore_index=True)
+
+        accuracy_list.append(accuracy_col)
+        f1_score_list.append(f1_score_col)
+
+        roc_list.append(roc_col)
+        precision_list.append(precision_col)
+        recall_list.append(recall_col)
+
+    df_accuracy = pd.DataFrame(accuracy_list, columns=sorted(df_thr.columns), index=list_thresholds)
+    df_f1_score = pd.DataFrame(f1_score_list, columns=sorted(df_thr.columns), index=list_thresholds)
+
+    df_roc = pd.DataFrame(roc_list, columns=sorted(df_thr.columns), index=list_thresholds)
+    df_precision = pd.DataFrame(precision_list, columns=sorted(df_thr.columns), index=list_thresholds)
+    df_recall = pd.DataFrame(recall_list, columns=sorted(df_thr.columns), index=list_thresholds)
+
+    best_pct_precision = df_precision.idxmax()
+    print(best_pct_precision.shape)
+    df_best_pct_precision = df_best_pct_precision.append(best_pct_precision, ignore_index=True)
 
 # confusion_matrix(df['stock_nok'], df_aux[col])
+
+
+
 
 
