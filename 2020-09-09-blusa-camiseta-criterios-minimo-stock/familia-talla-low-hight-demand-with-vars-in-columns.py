@@ -151,42 +151,45 @@ for date_family_size in date_family_size_list:
     for var in var_list_cat:
         print(var)
         df_fam_sz_var = df[(df['date'] == dt) & (df['family_desc'] == family) & (df['size'] == sz)][var]
-
-        ##########################################
-        # test
-
-        df_test = df.copy()
-
-        df = df_test.copy()
-        var = ['fit']
-        df_fam_sz_var = df[(df['family_desc'] == 'VESTIDO') &
-                           (df['date'] == '2020-07-24') &
-                           (df['size'] == 'XXXL')]
-
-
-
-        ####### end test
         # dummies
 
-        df_dummy = pd.get_dummies(df_fam_sz_var[var], columns=var)
+        df_dummy = pd.get_dummies(df_fam_sz_var, columns=var)
 
         print(df_dummy.head())
 
 
 
-        var_group_aux = ['date', 'family_desc', 'size', 'demanda', 'real_stock', 'stock_actual']
 
-        df_opt = pd.concat([df_fam_sz_var[var_group_aux], df_dummy], axis=1)
-
-        var_opt = df_dummy.colums.to_list()
-
-        
-        var_group = list(set(df.columns.to_list()) - set(var_group_aux) - set(['reference']))
-
-        df_var_pct = pd.DataFrame(columns=['date', 'family_desc', 'size'])
-        # df_var_pct_col = pd.DataFrame([])
+        # df = pd.get_dummies(df, columns=var_list_cat)
 
 
+
+
+
+
+var_list_aux = ['reference', 'family_desc', 'size']
+
+
+var_group_aux = ['date', 'demanda', 'real_stock', 'family_desc', 'size', 'stock_actual']
+var_group = list(set(df.columns.to_list()) - set(var_group_aux) - set(['reference']))
+
+df_var_pct = pd.DataFrame(columns=['date', 'family_desc', 'size'])
+df_var_pct_col = pd.DataFrame([])
+
+##########################################
+# test
+
+
+df_test = df.copy()
+
+df = df_test.copy()
+df = df[(df['family_desc'] == 'VESTIDO') & (df['date'] == '2020-07-24') & (df['size']=='XXXL')]
+
+#pd.set_option('display.max_columns', None)
+df = df[['family_desc', 'size', 'demanda', 'real_stock', 'stock_actual', 'fit_entallado', 'fit_recto', 'fit_holgado', 'fit_oversize', 'date']]
+var_group = ['fit_entallado', 'fit_recto', 'fit_holgado', 'fit_oversize']
+
+####### end test
 
 for col in var_group:
     print(col)
