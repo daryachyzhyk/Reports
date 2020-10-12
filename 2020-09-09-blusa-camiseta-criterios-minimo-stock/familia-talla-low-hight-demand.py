@@ -176,16 +176,41 @@ for date_family_size in date_family_size_list:
 
         var_group_aux = ['date', 'family_desc', 'size', 'demanda', 'real_stock', 'stock_actual']
 
-        df_opt = pd.concat([df_fam_sz_var[var_group_aux], df_dummy], axis=1)
+        df_opt_dummy = pd.concat([df_fam_sz_var[var_group_aux], df_dummy], axis=1)
 
-        var_opt = df_dummy.colums.to_list()
+        var_opt_list = df_dummy.columns.to_list()
+        # for each option of the variable calculate distr_abs and distr_relativa
 
-        
+        df_opt = pd.DataFrame([])
+        df_gr = pd.DataFrame([])
+        for opt in var_opt_list:
+            df_opt['opt_demanda'] = df_opt_dummy[opt] * df_opt_dummy['demanda']
+            df_opt['opt_stock_actual'] = df_opt_dummy[opt] * df_opt_dummy['stock_actual']
+            df_opt['demanda'] = df_opt_dummy['demanda']
+            df_opt['stock_actual'] = df_opt_dummy['stock_actual']
+            df_gr = df_gr.append(df_opt.sum(), ignore_index=True)
+        df_gr['pct_demanda_demanda'] = df_gr['demanda'] / df_gr['demanda']
+
+        # porcentaje de demanda de opcion de demanda de variable
+        df_gr[col + '_pct_stock_stock'] = df_gr[col + '_stock_actual'] / df_gr['stock_actual']
+
+
+
+
+
         var_group = list(set(df.columns.to_list()) - set(var_group_aux) - set(['reference']))
 
         df_var_pct = pd.DataFrame(columns=['date', 'family_desc', 'size'])
         # df_var_pct_col = pd.DataFrame([])
 
+        df_gr[col + '_distr_relativa'] = np.where((df_gr[col + '_pct_demanda_demanda'] == 0) |
+                                                  (df_gr[col + '_pct_demanda_demanda'] < df_gr[
+                                                      col + '_pct_stock_stock']),
+                                                  0, 1)
+
+        df_gr[col + '_distr_abs'] = np.where((df_gr[col + '_demanda'] == 0) |
+                                             (df_gr[col + '_pct_demanda_stock_actual'] < 1),
+                                             0, 1)
 
 
 for col in var_group:
