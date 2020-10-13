@@ -138,6 +138,16 @@ df.loc[df['stock_actual'] < df['demanda'], 'stock_actual'] = df['demanda']
 
 date_family_size_list = list(zip(df['date'], df['family_desc'], df['size']))
 
+# test
+# date_family_size_list = list(zip(['2020-07-24', '2020-07-24'], ['VESTIDO', 'VESTIDO'], ['M', 'XXXL']))
+
+# df_indicators = pd.DataFrame([])
+mean_weight_relative_list = []
+mean_weight_abs_list = []
+
+date_family_size_var_valor_list = []
+
+
 for date_family_size in date_family_size_list:
 
     # date_family_size = date_family_size_list[0]
@@ -150,18 +160,18 @@ for date_family_size in date_family_size_list:
     print(sz)
     for var in var_list_cat:
         print(var)
-        df_fam_sz_var = df[(df['date'] == dt) & (df['family_desc'] == family) & (df['size'] == sz)][var]
+        df_fam_sz_var = df[(df['date'] == dt) & (df['family_desc'] == family) & (df['size'] == sz)]
 
         ##########################################
         # test
-
-        df_test = df.copy()
-
-        df = df_test.copy()
-        var = ['fit']
-        df_fam_sz_var = df[(df['family_desc'] == 'VESTIDO') &
-                           (df['date'] == '2020-07-24') &
-                           (df['size'] == 'XXXL')]
+        #
+        # df_test = df.copy()
+        #
+        # df = df_test.copy()
+        # var = 'fit'
+        # df_fam_sz_var = df[(df['family_desc'].isin(['VESTIDO', 'TOP', 'ABRIGO'])) &
+        #                    (df['date'] == '2020-07-24') &
+        #                    (df['size'] == 'XXXL')]
 
 
 
@@ -170,7 +180,7 @@ for date_family_size in date_family_size_list:
 
         df_dummy = pd.get_dummies(df_fam_sz_var[var], columns=var)
 
-        print(df_dummy.head())
+        # print(df_dummy.head())
 
 
 
@@ -202,123 +212,160 @@ for date_family_size in date_family_size_list:
 
         df_gr['distr_abs'] = np.where((df_gr['demanda'] == 0) | (df_gr['pct_demanda_stock_actual'] < 1), 0, 1)
 
+        # df_gr['mean_weight'] = df_gr['mean_weight']
 
-
-        var_group = list(set(df.columns.to_list()) - set(var_group_aux) - set(['reference']))
-
-        df_var_pct = pd.DataFrame(columns=['date', 'family_desc', 'size'])
-        # df_var_pct_col = pd.DataFrame([])
-
-
-
-
-for col in var_group:
-    print(col)
-    columns = var_group_aux + [col]
-    df_var = df[columns].copy()
-
-
-    df_var[col + '_demanda'] = df_var[col] * df_var['demanda']
-    df_var[col + '_stock_real'] = df_var[col] * df_var['real_stock']
-    df_var[col + '_stock_actual'] = df_var[col] * df_var['stock_actual']
-
-    df_gr = df_var.groupby(['date', 'family_desc', 'size']).sum().reset_index()
-    # stock real, stock appeared in snapshots
-    # stock actual, in case when number of items in snapshots is less then in stock_real,
-
-    # porcentaje de demanda de opcion de demanda de variable
-    df_gr[col + '_pct_demanda_demanda'] = df_gr[col + '_demanda'] / df_gr['demanda']
-
-    # porcentaje de demanda de opcion de demanda de variable
-    df_gr[col + '_pct_stock_stock'] = df_gr[col + '_stock_actual'] / df_gr['stock_actual']
-
-    # percentage of variable option (option "holgado" of variable "fit") shipped of all real stock (snapshot),
-    # could be more then 100%
-    df_gr[col + '_pct_demanda_stock_real'] = df_gr[col + '_demanda'] / df_gr[col + '_stock_real']
-
-    # percentage of variable option (option "holgado" of variable "fit") shipped of all actual stock (snapshot),
-    # could be 100% maximum
-    df_gr[col + '_pct_demanda_stock_actual'] = df_gr[col + '_demanda'] / df_gr[col + '_stock_actual']
-
-    # percentage of option (option 'holgado') of variable ('fit') stock, could be 100% maximum
-    df_gr[col + '_pct_varstock'] = df_gr[col + '_stock_actual'] / df_gr['stock_actual']
-
-    # percentage of option (option 'holgado') shipped of variable ('fit') stock
-
-    df_gr[col + '_pct_demanda_weight'] = df_gr[col + '_pct_demanda_stock_actual'] * df_gr[col + '_pct_varstock']
-
-    # TODO: distr relativa, absoluta
-    # distr relativa	distr abs
-    # =if (OR(demanda=0, demanda de stock actual > stock actual), 0, 1)
-    df_gr[col + '_distr_relativa'] = np.where((df_gr[col + '_pct_demanda_demanda'] == 0) |
-                                              (df_gr[col + '_pct_demanda_demanda'] < df_gr[col + '_pct_stock_stock']),
-                                              0, 1)
-
-    df_gr[col + '_distr_abs'] = np.where((df_gr[col + '_demanda'] == 0) |
-                                              (df_gr[col + '_pct_demanda_stock_actual'] < 1),
-                                              0, 1)
+        date_family_size_var_valor_list.append((dt, family, sz, var,
+                                               (df_gr['distr_relative'] * df_gr['pct_demanda']).sum(),
+                                               (df_gr['distr_abs'] * df_gr['pct_demanda']).sum()))
 
 
 
-    df_gr = df_gr.fillna(0)
+        # mean_weight_relative_list.append((df_gr['distr_relative'] * df_gr['pct_demanda']).sum())
+        # mean_weight_abs_list.append((df_gr['distr_abs'] * df_gr['pct_demanda']).sum())
 
-    df_gr = df_gr.replace(np.inf, 1.0)
 
-    # TODO: añadir nuevas columnas
-    df_var_pct = df_var_pct.merge(df_gr[['date', 'family_desc', 'size',
-                                         col + '_stock_actual',
-                                         col + '_pct_demanda_demanda',
-                                         col + '_pct_stock_stock',
-                                         col + '_pct_demanda_stock_real',
-                                         col + '_pct_demanda_stock_actual',
-                                         col + '_pct_varstock',
-                                         col + '_pct_demanda_weight',
-                                         col + '_distr_relativa',
-                                         col + '_distr_abs']],
-                                  on=['date', 'family_desc', 'size'],
-                                  how='outer')
+df_indicators = pd.DataFrame(date_family_size_var_valor_list, columns=['date', 'family_desc', 'size', 'variable',
+                                                                       'mean_weight_relative', 'mean_weight_abs'])
 
-    # save as column
+df_indicators_label = pd.merge(df_indicators, df_feedback,
+                               on=['date', 'family_desc', 'size'])
 
-    df_temp = df_var_pct[['date', 'family_desc', 'size']]
-    df_temp['varoption_pct_demanda_stock_real'] = df_var_pct[col + '_pct_demanda_stock_real']
-    df_temp['varoption_pct_demanda_stock_actual'] = df_var_pct[col + '_pct_demanda_stock_actual']
 
-    df_temp['varoption_pct_varstock'] = df_var_pct[col + '_pct_varstock']
-    df_temp['varoption_pct_demanda_weight'] = df_var_pct[col + '_pct_demanda_weight']
 
-    df_temp['varoption'] = col
-    df_var_pct_col = df_var_pct_col.append(df_temp)
+df_indicators_label_gr = df_indicators_label.groupby(['date', 'family_desc', 'size']).agg({'mean_weight_relative': 'mean',
+                                                                                           'mean_weight_abs': 'mean',
+                                                                                           'stock_nok': 'last'}).reset_index()
 
-# TODO df_var_pct_col change inf to 10, nan to 0
 
-df_var_pct = df_var_pct.fillna(0)
-df_var_pct_col = df_var_pct_col.fillna(0)
 
-df_var_pct_col = df_var_pct_col.replace(np.inf, 1.0)
-
-df_var_pct_ps = df_var_pct.merge(df_feedback,
-                                 on=['date', 'family_desc', 'size'],
-                                 how='outer')
-
-df_var_pct_col_ps = df_var_pct_col.merge(df_feedback,
-                                 on=['date', 'family_desc', 'size'],
-                                 how='outer')
-
-df_var_pct_ps = df_var_pct_ps.fillna(0)
-df_var_pct_ps = df_var_pct_ps.replace(np.inf, 1)
-
-# TODO merge df_var_pct_col with PS labels
-##################################################################################################################
 # save
 
-# df_var_pct_ps.to_csv(os.path.join(path_results, 'date_family_size_var_pct_psfeedback.csv'), index=False)
-# df_var_pct_col_ps.to_csv(os.path.join(path_results, 'date_family_size_var_pct_col_psfeedback.csv'), index=False)
-#
-# aa = df_var_pct_ps.groupby(['family_desc']).agg({'stock_nok': 'mean'})
-#
+df_indicators_label.to_csv(os.path.join(path_results, 'date_family_size_var_mean_weight_relat_abs_psfeedback.csv'), index=False)
+
+df_indicators_label_gr.to_csv(os.path.join(path_results, 'date_family_size_mean_var_mean_weight_relat_abs_psfeedback.csv'), index=False)
+
 # with open(os.path.join(path_results, 'var_list.txt'), "wb") as fp:  # Pickling
 #     pickle.dump(var_group, fp)
+
+# df_indicators = pd.DataFrame(date_family_size_list, columns=['date', 'family_desc', 'size'])
+# df_indicators['mean_weight_relative'] = mean_weight_relative_list
+# df_indicators['mean_weight_abs'] = mean_weight_abs_list
+
+
+
+
+
+
+
+#
+#
+# for col in var_group:
+#     print(col)
+#     columns = var_group_aux + [col]
+#     df_var = df[columns].copy()
+#
+#
+#     df_var[col + '_demanda'] = df_var[col] * df_var['demanda']
+#     df_var[col + '_stock_real'] = df_var[col] * df_var['real_stock']
+#     df_var[col + '_stock_actual'] = df_var[col] * df_var['stock_actual']
+#
+#     df_gr = df_var.groupby(['date', 'family_desc', 'size']).sum().reset_index()
+#     # stock real, stock appeared in snapshots
+#     # stock actual, in case when number of items in snapshots is less then in stock_real,
+#
+#     # porcentaje de demanda de opcion de demanda de variable
+#     df_gr[col + '_pct_demanda_demanda'] = df_gr[col + '_demanda'] / df_gr['demanda']
+#
+#     # porcentaje de demanda de opcion de demanda de variable
+#     df_gr[col + '_pct_stock_stock'] = df_gr[col + '_stock_actual'] / df_gr['stock_actual']
+#
+#     # percentage of variable option (option "holgado" of variable "fit") shipped of all real stock (snapshot),
+#     # could be more then 100%
+#     df_gr[col + '_pct_demanda_stock_real'] = df_gr[col + '_demanda'] / df_gr[col + '_stock_real']
+#
+#     # percentage of variable option (option "holgado" of variable "fit") shipped of all actual stock (snapshot),
+#     # could be 100% maximum
+#     df_gr[col + '_pct_demanda_stock_actual'] = df_gr[col + '_demanda'] / df_gr[col + '_stock_actual']
+#
+#     # percentage of option (option 'holgado') of variable ('fit') stock, could be 100% maximum
+#     df_gr[col + '_pct_varstock'] = df_gr[col + '_stock_actual'] / df_gr['stock_actual']
+#
+#     # percentage of option (option 'holgado') shipped of variable ('fit') stock
+#
+#     df_gr[col + '_pct_demanda_weight'] = df_gr[col + '_pct_demanda_stock_actual'] * df_gr[col + '_pct_varstock']
+#
+#     # TODO: distr relativa, absoluta
+#     # distr relativa	distr abs
+#     # =if (OR(demanda=0, demanda de stock actual > stock actual), 0, 1)
+#     df_gr[col + '_distr_relativa'] = np.where((df_gr[col + '_pct_demanda_demanda'] == 0) |
+#                                               (df_gr[col + '_pct_demanda_demanda'] < df_gr[col + '_pct_stock_stock']),
+#                                               0, 1)
+#
+#     df_gr[col + '_distr_abs'] = np.where((df_gr[col + '_demanda'] == 0) |
+#                                               (df_gr[col + '_pct_demanda_stock_actual'] < 1),
+#                                               0, 1)
+#
+#
+#
+#     df_gr = df_gr.fillna(0)
+#
+#     df_gr = df_gr.replace(np.inf, 1.0)
+#
+#     # TODO: añadir nuevas columnas
+#     df_var_pct = df_var_pct.merge(df_gr[['date', 'family_desc', 'size',
+#                                          col + '_stock_actual',
+#                                          col + '_pct_demanda_demanda',
+#                                          col + '_pct_stock_stock',
+#                                          col + '_pct_demanda_stock_real',
+#                                          col + '_pct_demanda_stock_actual',
+#                                          col + '_pct_varstock',
+#                                          col + '_pct_demanda_weight',
+#                                          col + '_distr_relativa',
+#                                          col + '_distr_abs']],
+#                                   on=['date', 'family_desc', 'size'],
+#                                   how='outer')
+#
+#     # save as column
+#
+#     df_temp = df_var_pct[['date', 'family_desc', 'size']]
+#     df_temp['varoption_pct_demanda_stock_real'] = df_var_pct[col + '_pct_demanda_stock_real']
+#     df_temp['varoption_pct_demanda_stock_actual'] = df_var_pct[col + '_pct_demanda_stock_actual']
+#
+#     df_temp['varoption_pct_varstock'] = df_var_pct[col + '_pct_varstock']
+#     df_temp['varoption_pct_demanda_weight'] = df_var_pct[col + '_pct_demanda_weight']
+#
+#     df_temp['varoption'] = col
+#     df_var_pct_col = df_var_pct_col.append(df_temp)
+#
+# # TODO df_var_pct_col change inf to 10, nan to 0
+#
+# df_var_pct = df_var_pct.fillna(0)
+# df_var_pct_col = df_var_pct_col.fillna(0)
+#
+# df_var_pct_col = df_var_pct_col.replace(np.inf, 1.0)
+#
+# df_var_pct_ps = df_var_pct.merge(df_feedback,
+#                                  on=['date', 'family_desc', 'size'],
+#                                  how='outer')
+#
+# df_var_pct_col_ps = df_var_pct_col.merge(df_feedback,
+#                                  on=['date', 'family_desc', 'size'],
+#                                  how='outer')
+#
+# df_var_pct_ps = df_var_pct_ps.fillna(0)
+# df_var_pct_ps = df_var_pct_ps.replace(np.inf, 1)
+#
+# # TODO merge df_var_pct_col with PS labels
+# ##################################################################################################################
+# # save
+#
+# # df_var_pct_ps.to_csv(os.path.join(path_results, 'date_family_size_var_pct_psfeedback.csv'), index=False)
+# # df_var_pct_col_ps.to_csv(os.path.join(path_results, 'date_family_size_var_pct_col_psfeedback.csv'), index=False)
+# #
+# # aa = df_var_pct_ps.groupby(['family_desc']).agg({'stock_nok': 'mean'})
+# #
+# # with open(os.path.join(path_results, 'var_list.txt'), "wb") as fp:  # Pickling
+# #     pickle.dump(var_group, fp)
 
 
 
