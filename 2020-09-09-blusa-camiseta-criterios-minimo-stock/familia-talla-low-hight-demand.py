@@ -181,6 +181,7 @@ for date_family_size in date_family_size_list:
         var_opt_list = df_dummy.columns.to_list()
         # for each option of the variable calculate distr_abs and distr_relativa
 
+        # option
         df_opt = pd.DataFrame([])
         df_gr = pd.DataFrame([])
         for opt in var_opt_list:
@@ -188,13 +189,18 @@ for date_family_size in date_family_size_list:
             df_opt['opt_stock_actual'] = df_opt_dummy[opt] * df_opt_dummy['stock_actual']
             df_opt['demanda'] = df_opt_dummy['demanda']
             df_opt['stock_actual'] = df_opt_dummy['stock_actual']
+            df_opt['real_stock'] = df_opt_dummy['real_stock'] # TODO: delete
             df_gr = df_gr.append(df_opt.sum(), ignore_index=True)
-        df_gr['pct_demanda_demanda'] = df_gr['demanda'] / df_gr['demanda']
+        df_gr['pct_demanda'] = df_gr['opt_demanda'] / df_gr['demanda']
 
         # porcentaje de demanda de opcion de demanda de variable
-        df_gr[col + '_pct_stock_stock'] = df_gr[col + '_stock_actual'] / df_gr['stock_actual']
+        df_gr['pct_stock'] = df_gr['opt_stock_actual'] / df_gr['stock_actual']
 
+        df_gr['pct_demanda_stock_actual'] = df_gr['opt_demanda'] / df_gr['opt_stock_actual']
 
+        df_gr['distr_relative'] = np.where((df_gr['pct_demanda'] == 0) | (df_gr['pct_demanda'] < df_gr['pct_stock']), 0, 1)
+
+        df_gr['distr_abs'] = np.where((df_gr['demanda'] == 0) | (df_gr['pct_demanda_stock_actual'] < 1), 0, 1)
 
 
 
@@ -203,14 +209,7 @@ for date_family_size in date_family_size_list:
         df_var_pct = pd.DataFrame(columns=['date', 'family_desc', 'size'])
         # df_var_pct_col = pd.DataFrame([])
 
-        df_gr[col + '_distr_relativa'] = np.where((df_gr[col + '_pct_demanda_demanda'] == 0) |
-                                                  (df_gr[col + '_pct_demanda_demanda'] < df_gr[
-                                                      col + '_pct_stock_stock']),
-                                                  0, 1)
 
-        df_gr[col + '_distr_abs'] = np.where((df_gr[col + '_demanda'] == 0) |
-                                             (df_gr[col + '_pct_demanda_stock_actual'] < 1),
-                                             0, 1)
 
 
 for col in var_group:
