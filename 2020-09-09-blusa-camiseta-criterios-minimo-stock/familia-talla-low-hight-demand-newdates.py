@@ -16,7 +16,7 @@ pd.set_option('display.max_columns', None)
 import os
 import pandas as pd
 import numpy as np
-import pickle
+import datetime
 from joblib import Parallel, delayed, parallel_backend
 
 
@@ -26,27 +26,20 @@ def opt_sum(opt, df_opt_dummy):
     df_opt['opt_stock_actual'] = df_opt_dummy[opt] * df_opt_dummy['stock_actual']
     df_opt['demanda'] = df_opt_dummy['demanda']
     df_opt['stock_actual'] = df_opt_dummy['stock_actual']
-    # df_opt['real_stock'] = df_opt_dummy['real_stock'] # TODO: delete
     opt_sum = df_opt.sum()
     return opt_sum
 
 
 def var_loop(var, df_fam_sz_var):
-    # for var in var_list_cat:
-    # print(var)
 
     if ~df_fam_sz_var[var].isnull().all():
         # dummies
 
         df_dummy = pd.get_dummies(df_fam_sz_var[var], columns=var)
-
-        # print(df_dummy.head())
-
         var_group_aux = ['date', 'family_desc', 'size', 'demanda', 'real_stock', 'stock_actual']
-
         df_opt_dummy = pd.concat([df_fam_sz_var[var_group_aux], df_dummy], axis=1)
-
         var_opt_list = df_dummy.columns.to_list()
+
         # for each option of the variable calculate distr_abs and distr_relativa
 
         # option
@@ -55,7 +48,6 @@ def var_loop(var, df_fam_sz_var):
                 delayed(opt_sum)(opt, df_opt_dummy) for opt in var_opt_list)
 
         df_gr = pd.DataFrame(opt_sum_paral)
-
         df_gr['pct_demanda'] = df_gr['opt_demanda'] / df_gr['demanda']
 
         # porcentaje de demanda de opcion de demanda de variable
@@ -63,31 +55,24 @@ def var_loop(var, df_fam_sz_var):
 
         df_gr['pct_demanda_stock_actual'] = df_gr['opt_demanda'] / df_gr['opt_stock_actual']
 
-        df_gr['distr_relative'] = np.where((df_gr['pct_demanda'] == 0) | (df_gr['pct_demanda'] < df_gr['pct_stock']), 0,
-                                           1)
+        # df_gr['distr_relative'] = np.where((df_gr['pct_demanda'] == 0) | (df_gr['pct_demanda'] < df_gr['pct_stock']), 0, 1)
 
         df_gr['distr_abs'] = np.where((df_gr['demanda'] == 0) | (df_gr['pct_demanda_stock_actual'] < 1), 0, 1)
 
         date_family_size_var_valor_tuple = (var,
-                                             (df_gr['distr_relative'] * df_gr['pct_demanda']).sum(),
+                                             # (df_gr['distr_relative'] * df_gr['pct_demanda']).sum(),
                                              (df_gr['distr_abs'] * df_gr['pct_demanda']).sum())
 
-        # date_family_size_var_valor_tuple.append((dt, family, sz, var,
-        #                                        (df_gr['distr_relative'] * df_gr['pct_demanda']).sum(),
-        #                                        (df_gr['distr_abs'] * df_gr['pct_demanda']).sum()))
     else:
         date_family_size_var_valor_tuple = (var,
-                                             np.nan,
+                                             # np.nan,
                                              np.nan)
     return date_family_size_var_valor_tuple
 
 
 def get_var_distr_relat_abs(date_family_size, df):
-
-
-    # for date_family_size in date_family_size_list:
-
     # date_family_size = date_family_size_list[0]
+
 
     dt = date_family_size[0]
     family = date_family_size[1]
@@ -104,16 +89,14 @@ def get_var_distr_relat_abs(date_family_size, df):
     with parallel_backend('threading', n_jobs=6):
         date_family_size_var_valor_list = Parallel()(
             delayed(var_loop)(var, df_fam_sz_var) for var in var_list_cat)
-    # dt, family, sz,
-    # print(date_family_size_var_valor_list)
 
-    df_date_family_size_var_valor = pd.DataFrame(date_family_size_var_valor_list, columns=['var', 'distr_relative', 'distr_abs'])
+    df_date_family_size_var_valor = pd.DataFrame(date_family_size_var_valor_list, columns=['var',
+                                                                                           # 'distr_relative',
+                                                                                           'distr_abs'])
     df_date_family_size_var_valor['date'] = dt
     df_date_family_size_var_valor['family_desc'] = family
     df_date_family_size_var_valor['size'] = sz
-    # print(df_date_family_size_var_valor)
     df_date_family_size_var_valor = df_date_family_size_var_valor.dropna()
-    # print(df_date_family_size_var_valor)
 
     return df_date_family_size_var_valor
 
@@ -131,20 +114,23 @@ file_feedback = ('/home/darya/Documents/Reports/2020-09-09-blusa-camiseta-criter
 
 ######################################################################################################################
 # feedback
-df_feedback = pd.read_csv(file_feedback, usecols=['Familia', 'Talla', 'Fecha', 'Stock NOK'])
+df_feedback = pd.read_csv(file_feedback, usecols=['Familia', 'Talla', 'Fecha'])
 
 df_feedback = df_feedback.rename(columns={'Familia': 'family_desc',
                                           'Talla': 'size',
-                                          'Fecha': 'date',
-                                          'Stock NOK': 'stock_nok'})
-
-df_feedback['stock_nok'] = df_feedback['stock_nok'].fillna(0)
-
-df_feedback.loc[df_feedback['stock_nok'] != 0, 'stock_nok'] = 1
+                                          'Fecha': 'date'})
 
 family_list = list(set(df_feedback['family_desc']))
 
-date_list = list(set(df_feedback['date']))
+
+date_start_str = df_feedback['date'].iloc[0]
+
+date_end_str = datetime.date.today().strftime('%Y-%m-%d')
+
+date_list = [d.strftime('%Y-%m-%d') for d in pd.bdate_range(date_start_str, date_end_str)]
+
+# [d.strftime('%Y%m%d') for d in pandas.date_range('20130226','20130302')]
+# date_list2 = df_feedback['date'].unique().tolist() #list(set(df_feedback['date']))
 
 
 ######################################################################################################################
@@ -154,6 +140,7 @@ query_demanda_text = 'date_ps_done in @date_list and family_desc in @family_list
 
 df_demanda_raw = pd.read_csv(file_demanda,
                              usecols=['reference', 'date_ps_done', 'family_desc']).query(query_demanda_text)
+
 reference_list = list(set(df_demanda_raw['reference'].to_list()))
 
 df_demanda = df_demanda_raw.groupby(['date_ps_done', 'reference']).size().reset_index(name='demanda')
@@ -235,9 +222,6 @@ df = df[df['family_desc'].isin(family_list)]
 df['stock_actual'] = df['real_stock']
 df.loc[df['stock_actual'] < df['demanda'], 'stock_actual'] = df['demanda']
 
-# date_family_size_list = list(zip(df['date'], df['family_desc'], df['size']))
-
-
 date_family_size_list = list(zip(df_feedback['date'], df_feedback['family_desc'], df_feedback['size']))
 
 #################################3
@@ -262,27 +246,26 @@ with parallel_backend('threading', n_jobs=6):
 
 df_indicators = pd.concat(date_family_size_var_valor_list)
 
-# date_family_size_var_valor_list_flat = [item for sublist in date_family_size_var_valor_list for item in sublist]
+# wothout distr_relative
+
+
+df_indicators_gr = df_indicators.groupby(['date', 'family_desc', 'size']).agg({'distr_abs': 'mean'}).reset_index()
+
+
+# with distr_relative
+# df_indicators_label = pd.merge(df_indicators, df_feedback, on=['date', 'family_desc', 'size'])
 #
-# df_indicators = pd.DataFrame(date_family_size_var_valor_list_flat, columns=['date', 'family_desc', 'size', 'variable',
-#                                                                        'mean_weight_relative', 'mean_weight_abs'])
-
-df_indicators_label = pd.merge(df_indicators, df_feedback,
-                               on=['date', 'family_desc', 'size'])
-
-
-
-df_indicators_label_gr = df_indicators_label.groupby(['date', 'family_desc', 'size']).agg({'distr_relative': 'mean',
-                                                                                           'distr_abs': 'mean',
-                                                                                           'stock_nok': 'last'}).reset_index()
-df_indicators_label_gr['distr_mean'] = (df_indicators_label_gr['distr_relative'] + df_indicators_label_gr['distr_abs']) / 2
+# df_indicators_label_gr = df_indicators_label.groupby(['date', 'family_desc', 'size']).agg({'distr_relative': 'mean',
+#                                                                                            'distr_abs': 'mean',
+#                                                                                            'stock_nok': 'last'}).reset_index()
+# df_indicators_label_gr['distr_mean'] = (df_indicators_label_gr['distr_relative'] + df_indicators_label_gr['distr_abs']) / 2
 
 
 # save
+date_save = str(df.date.max())
+df_indicators.to_csv(os.path.join(path_results, 'date_family_size_var_mean_weight_relat_abs_psfeedback_' + date_save + '.csv'), index=False)
 
-df_indicators_label.to_csv(os.path.join(path_results, 'date_family_size_var_mean_weight_relat_abs_psfeedback_20201101.csv'), index=False)
-
-df_indicators_label_gr.to_csv(os.path.join(path_results, 'date_family_size_mean_var_mean_weight_relat_abs_psfeedback_20201101.csv'), index=False)
+df_indicators_gr.to_csv(os.path.join(path_results, 'date_family_size_mean_var_mean_weight_relat_abs_psfeedback_' + date_save + '.csv'), index=False)
 
 
 
