@@ -116,30 +116,7 @@ for dic_categ in permutations_dic:
     i = i + 1
     print()
 
-##############################################3
 
-# NOOS
-# SIEMPRE TIENE QUE HABER:
-# Pitillo azul precio medio largo medio
-# Pitillo negro Precio medio largo medio
-# Pitillo gris precio medio largo medio
-
-#
-# df_categ_all.loc[(df_modelos['down_part_type'] == 'cigarette') & (df_modelos['color_categ'].isin(['azul', 'negro', 'gris'])) &
-#                      (df_modelos['precio'] == 'precio_medio') & (df_modelos['largura'] == 'largura_medio'), 'noos'] = 1
-#
-# df_categ_all['noos'] = df_categ_all['noos'].fillna(0)
-
-# ESPECIAL
-# PARA AÑADIR VARIEDAD NECESITAMOS:
-# Diferentes tipos que no sean pitillo
-# Diferente precio, sobre todos alto
-# Larguras cortas y largas
-#
-# df_categ_all.loc[(df_modelos['down_part_type'] != 'cigarette') &
-#                  (df_modelos['largura'].isin(['largura_corto', 'largura_largo'])), 'especial'] = 1
-#
-# df_categ_all['especial'] = df_categ_all['especial'].fillna(0)
 
 
 df_categ_all['modelo_num'] = df_categ_all['modelo']
@@ -165,28 +142,108 @@ df_categ_gr['modelo_pct'] = df_categ_gr['modelo_num'] * 100 / df_categ_gr['model
 # fig.show()
 
 # import plotly as px
+#######################################################################################################################
+# plot diferentes secuencias del stock historico
+def plot_sunburst(df, path_list, value, title_text, path_save, name_save):
+    fig = px.sunburst(data_frame=df,
+                      path=path_list,
+                      values=value,
+                      branchvalues="total")
+
+    fig.update_layout(
+        title={
+            'text': title_text,
+            'y': 0.9,
+            'x': 0.13,
+            'xanchor': 'center',
+            'yanchor': 'top'})
+    fig.update_traces(textinfo="label+percent root + value")
+    fig['layout'].update(margin=dict(l=0, r=0, b=0, t=0))
+
+    # fig.show()
+
+    fig.write_html(os.path.join(path_save, name_save + '.html'))
+    fig.write_image(os.path.join(path_save, name_save + '.png'))
+
+# Del centro al exterior:
+# Tipo-precio-color-largura
+# Largura-tipo-precio-color
+# Precio-Tipo-Largura-Color
+# Color-tipo-precio-largura
+
+plot_order_list = [['down_part_type', 'precio', 'color_categ', 'largura'],
+                   ['largura', 'down_part_type', 'precio', 'color_categ'],
+                   ['precio', 'down_part_type', 'largura', 'color_categ'],
+                   ['color_categ', 'down_part_type', 'precio', 'largura']]
+
+plot_value = 'modelo_num'
+family_desc = 'DENIM'
+careg_object_text = 'stock_historico'
+
+for order_list in plot_order_list:
+
+
+    plot_title_text = careg_object_text.replace('_', ' ') + ' ' + family_desc
+    order_list_save = '_'.join(order_list)
+    print('Plotting sunburst for ' + family_desc + ' for order ' + order_list_save)
+    plot_name_save = 'sunburst_categor_' + family_desc + '_' + careg_object_text + '_' + order_list_save
+    plot_sunburst(df_categ_gr, order_list, plot_value, plot_title_text, path_save, plot_name_save)
+
+
+#######################################################################################################################
+# Missing categorias en stock historico
 
 
 
-fig = px.sunburst(data_frame=df_categ_gr,
-                          path=['largura', 'down_part_type', 'color_categ', 'precio'],
-                          values='modelo_num',
-                          branchvalues="total")
 
-fig.update_layout(
-    title={
-        'text': "Stock historico DENIM",
-        'y': 0.9,
-        'x': 0.13,
-        'xanchor': 'center',
-        'yanchor': 'top'})
-fig.update_traces(textinfo="label+percent root + value")
-fig['layout'].update(margin=dict(l=0, r=0, b=0, t=0))
+#######################################################################################################################
 
-# fig.show()
+##############################################3
 
-fig.write_html(os.path.join(path_save, 'denim_categ_stock_sunburst.html'))
-fig.write_image(os.path.join(path_save, 'denim_categ_stock_sunburst.png'))
+# NOOS
+# SIEMPRE TIENE QUE HABER:
+# Pitillo azul precio medio largo medio
+# Pitillo negro Precio medio largo medio
+# Pitillo gris precio medio largo medio
+
+#
+# df_categ_all.loc[(df_modelos['down_part_type'] == 'cigarette') & (df_modelos['color_categ'].isin(['azul', 'negro', 'gris'])) &
+#                      (df_modelos['precio'] == 'precio_medio') & (df_modelos['largura'] == 'largura_medio'), 'noos'] = 1
+#
+# df_categ_all['noos'] = df_categ_all['noos'].fillna(0)
+
+# ESPECIAL
+# PARA AÑADIR VARIEDAD NECESITAMOS:
+# Diferentes tipos que no sean pitillo
+# Diferente precio, sobre todos alto
+# Larguras cortas y largas
+#
+# df_categ_all.loc[(df_modelos['down_part_type'] != 'cigarette') &
+#                  (df_modelos['largura'].isin(['largura_corto', 'largura_largo'])), 'especial'] = 1
+#
+# df_categ_all['especial'] = df_categ_all['especial'].fillna(0)
+
+#######################################################################################################################
+#
+# fig = px.sunburst(data_frame=df_categ_gr,
+#                           path=['largura', 'down_part_type', 'color_categ', 'precio'],
+#                           values='modelo_num',
+#                           branchvalues="total")
+#
+# fig.update_layout(
+#     title={
+#         'text': "Stock historico DENIM",
+#         'y': 0.9,
+#         'x': 0.13,
+#         'xanchor': 'center',
+#         'yanchor': 'top'})
+# fig.update_traces(textinfo="label+percent root + value")
+# fig['layout'].update(margin=dict(l=0, r=0, b=0, t=0))
+#
+# # fig.show()
+#
+# fig.write_html(os.path.join(path_save, 'denim_categ_stock_sunburst.html'))
+# fig.write_image(os.path.join(path_save, 'denim_categ_stock_sunburst.png'))
 
 ############
 # con imagenes de pantalones
