@@ -195,8 +195,168 @@ for order_list in plot_order_list:
 
 
 
+def get_df_categ(categ_list_of_dic, path_save=None, file_name=None):
+    i = 0
+    categ_num = []
+    categ_desc = []
+    for dic_categ in categ_list_of_dic:
+        print(dic_categ)
+        categ_num.append(i)
+        categ_desc.append(str(dic_categ))
+        i = i + 1
+
+    df_categ_desc = pd.DataFrame({'categoria_num': categ_num, 'categoria_desc': categ_desc})
+
+    if path_save:
+        df_categ_desc.to_excel(os.path.join(path_save, file_name), index=False)
+    return df_categ_desc
+
+
+# categorias faltan
+def get_missing_categ(df_categ_desc, df_categ_gr, path_save=None, file_name=None):
+
+
+    # list_stock_hist_categ_mis = df_categ_desc[~df_categ_desc['categ_desc'].isin(df_categ_gr['categoria_desc'])]
+
+    df_missing_categ = pd.merge(df_categ_desc, df_categ_gr[['categoria_num', 'categoria_desc']],
+                             on=['categoria_num', 'categoria_desc'],
+                             how='left', indicator=True)
+
+    df_missing_categ = df_missing_categ[df_missing_categ['_merge'] == 'left_only']
+    df_missing_categ = df_missing_categ.drop(columns=['_merge'])
+    if path_save:
+        df_missing_categ.to_excel(os.path.join(path_save, file_name), index=False)
+    return df_missing_categ
+
+
+family_desc_value = 'DENIM'
+careg_object_text = 'stock_historico'
+name_save_all_categories = family_desc_value + '_categorias.xlsx'
+df_categ_desc = get_df_categ(permutations_dic, path_save=path_save, file_name=name_save_all_categories)
+
+
+name_save_missing_categories_stock = family_desc_value + '_categorias_que_faltan_' + careg_object_text + '.xlsx'
+df_missing_categ = get_missing_categ(df_categ_desc, df_categ_gr, path_save=path_save, file_name=name_save_missing_categories_stock)
+
+
+
 
 #######################################################################################################################
+# categorizacion por temporada
+
+
+stock_file = ('/var/lib/lookiero/stock/stock_tool/stock.csv.gz')
+productos_file = ('/var/lib/lookiero/stock/stock_tool/productos_preprocessed.csv.gz')
+venta_file = ('/var/lib/lookiero/stock/stock_tool/demanda_preprocessed.csv.gz')
+
+# Dates as parameters
+
+date_start_str = '2020-01-01'
+date_end_str = '2020-06-30'
+
+date_start_str_save = date_start_str.replace('-', '')
+date_end_str_save = date_end_str.replace('-', '')
+
+print('Extracting data for: ' + date_start_str + ' - ' + date_end_str)
+
+# All 'envios' for selected dates, reference level. Note: there is no 'temporada' at this level
+
+print('Load envios')
+
+query_envios_text = 'date_ps_done >= @date_start_str and date_ps_done <= @date_end_str and family_desc == @family_desc_value'
+df_envios_raw = pd.read_csv(venta_file,
+                            usecols=['reference', 'modelo', 'family_desc', 'size', 'color', 'date_ps_done',
+                                     'purchased', 'country', 'date_terminated', 'date_co']
+                            ).query(query_envios_text)
+
+list_date_ps_done = list(set(df_envios_raw['date_ps_done']))
+
+df_reference_modelo_unq = df_envios_raw[['reference', 'modelo', 'color']].drop_duplicates()  # , 'color'
+
+modelo_list = df_reference_modelo_unq['modelo'].to_list()
+reference_list = df_reference_modelo_unq['reference'].to_list()
+
+print('Extract stock')
+
+# load data in chunks and from each chunk extract reference and dates of interest
+df_stock_raw = pd.DataFrame([])
+
+i = 0
+df_stock_reader = pd.read_csv(stock_file, iterator=True, chunksize=100000)
+for df_chunk in df_stock_reader:
+    print(i, ' chunk')
+    df_stock_raw = df_stock_raw.append(df_chunk[(df_chunk['reference'].isin(reference_list)) &
+                                                (df_chunk['date'].isin(list_date_ps_done)) &
+                                                (df_chunk['active'] == 1)])
+    i = i + 1
+
+df_stock_raw[df_stock_raw['real_stock'] < 0] = 0
+
+
+# add modelo
+df_stock_raw = pd.merge(df_stock_raw, df_reference_modelo_unq, on=['reference'], how='left')
+df_stock_periodo_modelo = df_stock_raw.groupby(['modelo', 'color']).agg({'real_stock': 'sum'}).reset_index() # 'date',
+
+
+df_stock_periodo_modelo['real_stock'] = df_stock_periodo_modelo['real_stock'].fillna(0)
+
+
+
+
+#  envios, purchased
+
+print('Extract envios and purchased')
+
+df_envios = df_envios_raw[['reference', 'modelo', 'color', 'purchased', 'date_co']]
+
+df_envios['envios'] = 1
+df_envios['envios_co'] = df_envios['date_co']
+
+df_envios['purchased'] = df_envios['purchased'].fillna(0)
+
+df_envios_periodo_modelo = df_envios.groupby(['modelo', 'color']).agg({'purchased': 'sum',
+                                                                         'envios': 'sum',
+                                                                         'envios_co': 'count'}).reset_index()
+
+
+df_periodo = pd.merge(df_stock_periodo_modelo, df_envios_periodo_modelo,
+                  on=['modelo', 'color'])
+
+df_periodo_feature = pd.merge(df_periodo,
+                  df_categ_all[['modelo', 'color', 'categoria_num',
+                                'largura', 'down_part_type', 'color_categ', 'precio', 'categoria_desc', 'precio_catalogo']],
+                  on=['modelo', 'color'], how='left')
+
+
+
+df_periodo_feature['modelo_num'] = df_periodo_feature['modelo']
+
+df_periodo_categ = df_periodo_feature.groupby(['categoria_num',
+                                    'categoria_desc']).agg({'down_part_type': 'last',
+                                                            'color_categ': 'last',
+                                                            'precio': 'last',
+                                                            'largura': 'last',
+                                                            'modelo_num': 'count',
+                                                            'modelo': lambda x: list(set(x)),
+                                                            'purchased': 'sum',
+                                                            'envios': 'sum',
+                                                            'envios_co': 'sum',
+                                                            'precio_catalogo': 'mean'}).reset_index()
+
+
+df_periodo_categ['purchased_por_precio_medio'] = df_periodo_categ['purchased'] * df_periodo_categ['precio_catalogo']
+
+# missing categories
+
+careg_object_text = 'periodo_' + date_start_str_save + '_' + date_end_str_save
+
+
+name_save_missing_categories_periodo = family_desc_value + '_categorias_que_faltan_' + careg_object_text + '.xlsx'
+
+df_missing_categ_periodo = get_missing_categ(df_categ_desc, df_periodo_categ, path_save=path_save, file_name=name_save_missing_categories_periodo)
+
+# plot
+
 
 ##############################################3
 
