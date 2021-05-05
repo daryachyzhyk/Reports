@@ -211,20 +211,47 @@ def get_df_categ(categ_list_of_dic, path_save=None, file_name=None):
         df_categ_desc.to_excel(os.path.join(path_save, file_name), index=False)
     return df_categ_desc
 
+# df_categ_possib = df_categ_desc.copy()
+# df_categ_stock = df_categ_gr.copy()
+# df_categ_periodo = df_periodo_categ.copy()
+
+
 
 # categorias faltan
-def get_missing_categ(df_categ_desc, df_categ_gr, path_save=None, file_name=None):
+def get_missing_categ(df_categ_possib, df_categ_stock, df_categ_periodo=None, path_save=None, file_name=None):
 
 
     # list_stock_hist_categ_mis = df_categ_desc[~df_categ_desc['categ_desc'].isin(df_categ_gr['categoria_desc'])]
 
-    df_missing_categ = pd.merge(df_categ_desc, df_categ_gr[['categoria_num', 'categoria_desc']],
+    df_missing_hist = pd.merge(df_categ_possib, df_categ_stock[['categoria_num', 'categoria_desc']],
                              on=['categoria_num', 'categoria_desc'],
                              how='left', indicator=True)
 
-    df_missing_categ = df_missing_categ[df_missing_categ['_merge'] == 'left_only']
-    df_missing_categ = df_missing_categ.drop(columns=['_merge'])
+    df_missing_hist = df_missing_hist[df_missing_hist['_merge'] == 'left_only']
+    # df_missing_categ = df_missing_categ.rename(columns={'_merge': 'missing_stock_history'})
+    df_missing_hist['categ_missing_history'] = 1
+    df_missing_hist = df_missing_hist.drop(columns=['_merge'])
+
+    if df_categ_periodo is None:
+        df_missing_categ = df_missing_hist.copy()
+    else:
+        df_missing_periodo = pd.merge(df_categ_possib, df_categ_periodo[['categoria_num', 'categoria_desc']],
+                                    on=['categoria_num', 'categoria_desc'],
+                                    how='left', indicator=True)
+        df_missing_periodo = df_missing_periodo[df_missing_periodo['_merge'] == 'left_only']
+
+        df_missing_periodo['categ_missing_season'] = 1
+        df_missing_periodo = df_missing_periodo.drop(columns=['_merge'])
+        df_missing_categ = pd.merge(df_missing_hist, df_missing_periodo, on=['categoria_num', 'categoria_desc'],
+                                    how='outer')
+
+    df_missing_categ['categ_missing_history'] = df_missing_categ['categ_missing_history'].fillna(0)
+    # df_periodo_categ
+
+
     if path_save:
+        if not os.path.exists(path_save):
+            os.mkdir(path_save)
         df_missing_categ.to_excel(os.path.join(path_save, file_name), index=False)
     return df_missing_categ
 
@@ -236,7 +263,7 @@ df_categ_desc = get_df_categ(permutations_dic, path_save=path_save, file_name=na
 
 
 name_save_missing_categories_stock = family_desc_value + '_categorias_que_faltan_' + careg_object_text + '.xlsx'
-df_missing_categ = get_missing_categ(df_categ_desc, df_categ_gr, path_save=path_save, file_name=name_save_missing_categories_stock)
+df_missing_categ = get_missing_categ(df_categ_desc, df_categ_gr, df_categ_periodo=None, path_save=path_save, file_name=name_save_missing_categories_stock)
 
 
 
@@ -250,113 +277,170 @@ productos_file = ('/var/lib/lookiero/stock/stock_tool/productos_preprocessed.csv
 venta_file = ('/var/lib/lookiero/stock/stock_tool/demanda_preprocessed.csv.gz')
 
 # Dates as parameters
+def get_season_dates(season_number):
+    lk_start_year = 2016
+    # season_number = 9
+    if (season_number % 2) == 0:
+        season_start = '-07-01'
+        season_end = '-12-31'
+    else:
+        season_start = '-01-01'
+        season_end = '-06-30'
 
-date_start_str = '2020-01-01'
-date_end_str = '2020-06-30'
+    date_start_str = str(lk_start_year + np.int(np.ceil(season_number / 2)) - 1) + season_start
+    date_end_str = str(lk_start_year + np.int(np.ceil(season_number / 2)) - 1) + season_end
 
-date_start_str_save = date_start_str.replace('-', '')
-date_end_str_save = date_end_str.replace('-', '')
+    # TODO add test
+    return date_start_str, date_end_str
 
-print('Extracting data for: ' + date_start_str + ' - ' + date_end_str)
-
-# All 'envios' for selected dates, reference level. Note: there is no 'temporada' at this level
-
-print('Load envios')
-
-query_envios_text = 'date_ps_done >= @date_start_str and date_ps_done <= @date_end_str and family_desc == @family_desc_value'
-df_envios_raw = pd.read_csv(venta_file,
-                            usecols=['reference', 'modelo', 'family_desc', 'size', 'color', 'date_ps_done',
-                                     'purchased', 'country', 'date_terminated', 'date_co']
-                            ).query(query_envios_text)
-
-list_date_ps_done = list(set(df_envios_raw['date_ps_done']))
-
-df_reference_modelo_unq = df_envios_raw[['reference', 'modelo', 'color']].drop_duplicates()  # , 'color'
-
-modelo_list = df_reference_modelo_unq['modelo'].to_list()
-reference_list = df_reference_modelo_unq['reference'].to_list()
-
-print('Extract stock')
-
-# load data in chunks and from each chunk extract reference and dates of interest
-df_stock_raw = pd.DataFrame([])
-
-i = 0
-df_stock_reader = pd.read_csv(stock_file, iterator=True, chunksize=100000)
-for df_chunk in df_stock_reader:
-    print(i, ' chunk')
-    df_stock_raw = df_stock_raw.append(df_chunk[(df_chunk['reference'].isin(reference_list)) &
-                                                (df_chunk['date'].isin(list_date_ps_done)) &
-                                                (df_chunk['active'] == 1)])
-    i = i + 1
-
-df_stock_raw[df_stock_raw['real_stock'] < 0] = 0
-
-
-# add modelo
-df_stock_raw = pd.merge(df_stock_raw, df_reference_modelo_unq, on=['reference'], how='left')
-df_stock_periodo_modelo = df_stock_raw.groupby(['modelo', 'color']).agg({'real_stock': 'sum'}).reset_index() # 'date',
-
-
-df_stock_periodo_modelo['real_stock'] = df_stock_periodo_modelo['real_stock'].fillna(0)
+for season_number in list(range(1, 12)):
+    date_start_str, date_end_str = get_season_dates(season_number)
+    print(str(season_number) + ': ' + date_start_str + ' ' + str(date_end_str))
 
 
 
-
-#  envios, purchased
-
-print('Extract envios and purchased')
-
-df_envios = df_envios_raw[['reference', 'modelo', 'color', 'purchased', 'date_co']]
-
-df_envios['envios'] = 1
-df_envios['envios_co'] = df_envios['date_co']
-
-df_envios['purchased'] = df_envios['purchased'].fillna(0)
-
-df_envios_periodo_modelo = df_envios.groupby(['modelo', 'color']).agg({'purchased': 'sum',
-                                                                         'envios': 'sum',
-                                                                         'envios_co': 'count'}).reset_index()
+for season_number in list(range(1, 12)): # list(range(1, 12))  [4, 9, 10, 11]
+    date_start_str, date_end_str = get_season_dates(season_number)
 
 
-df_periodo = pd.merge(df_stock_periodo_modelo, df_envios_periodo_modelo,
-                  on=['modelo', 'color'])
+    # date_start_str = '2020-01-01'
+    # date_end_str = '2020-06-30'
 
-df_periodo_feature = pd.merge(df_periodo,
-                  df_categ_all[['modelo', 'color', 'categoria_num',
-                                'largura', 'down_part_type', 'color_categ', 'precio', 'categoria_desc', 'precio_catalogo']],
-                  on=['modelo', 'color'], how='left')
+    date_start_str_save = date_start_str.replace('-', '')
+    date_end_str_save = date_end_str.replace('-', '')
+
+    print('Extracting data for: season ' + str(season_number) + ' ' + date_start_str + ' - ' + date_end_str)
+
+    # All 'envios' for selected dates, reference level. Note: there is no 'temporada' at this level
+
+    print('Load envios')
+
+    query_envios_text = 'date_ps_done >= @date_start_str and date_ps_done <= @date_end_str and family_desc == @family_desc_value'
+    df_envios_raw = pd.read_csv(venta_file,
+                                usecols=['reference', 'modelo', 'family_desc', 'size', 'color', 'date_ps_done',
+                                         'purchased', 'country', 'date_terminated', 'date_co']
+                                ).query(query_envios_text)
+
+    list_date_ps_done = list(set(df_envios_raw['date_ps_done']))
+
+    df_reference_modelo_unq = df_envios_raw[['reference', 'modelo', 'color']].drop_duplicates()  # , 'color'
+
+    modelo_list = df_reference_modelo_unq['modelo'].to_list()
+    reference_list = df_reference_modelo_unq['reference'].to_list()
+
+    print('Extract stock')
+
+    # load data in chunks and from each chunk extract reference and dates of interest
+    df_stock_raw = pd.DataFrame([])
+
+    i = 0
+    df_stock_reader = pd.read_csv(stock_file, iterator=True, chunksize=100000)
+    for df_chunk in df_stock_reader:
+        # print(i, ' chunk')
+        df_stock_raw = df_stock_raw.append(df_chunk[(df_chunk['reference'].isin(reference_list)) &
+                                                    (df_chunk['date'].isin(list_date_ps_done)) &
+                                                    (df_chunk['active'] == 1)])
+        i = i + 1
+
+    df_stock_raw[df_stock_raw['real_stock'] < 0] = 0
+
+
+    # add modelo
+    df_stock_raw = pd.merge(df_stock_raw, df_reference_modelo_unq, on=['reference'], how='left')
+    df_stock_periodo_modelo = df_stock_raw.groupby(['modelo', 'color']).agg({'real_stock': 'sum'}).reset_index() # 'date',
+
+
+    df_stock_periodo_modelo['real_stock'] = df_stock_periodo_modelo['real_stock'].fillna(0)
 
 
 
-df_periodo_feature['modelo_num'] = df_periodo_feature['modelo']
 
-df_periodo_categ = df_periodo_feature.groupby(['categoria_num',
-                                    'categoria_desc']).agg({'down_part_type': 'last',
-                                                            'color_categ': 'last',
-                                                            'precio': 'last',
-                                                            'largura': 'last',
-                                                            'modelo_num': 'count',
-                                                            'modelo': lambda x: list(set(x)),
-                                                            'purchased': 'sum',
-                                                            'envios': 'sum',
-                                                            'envios_co': 'sum',
-                                                            'precio_catalogo': 'mean'}).reset_index()
+    #  envios, purchased
 
+    print('Extract envios and purchased')
 
-df_periodo_categ['purchased_por_precio_medio'] = df_periodo_categ['purchased'] * df_periodo_categ['precio_catalogo']
+    df_envios = df_envios_raw[['reference', 'modelo', 'color', 'purchased', 'date_co']]
 
-# missing categories
+    df_envios['envios'] = 1
+    df_envios['envios_co'] = df_envios['date_co']
 
-careg_object_text = 'periodo_' + date_start_str_save + '_' + date_end_str_save
+    df_envios['purchased'] = df_envios['purchased'].fillna(0)
+
+    df_envios_periodo_modelo = df_envios.groupby(['modelo', 'color']).agg({'purchased': 'sum',
+                                                                             'envios': 'sum',
+                                                                             'envios_co': 'count'}).reset_index()
 
 
-name_save_missing_categories_periodo = family_desc_value + '_categorias_que_faltan_' + careg_object_text + '.xlsx'
+    df_periodo = pd.merge(df_stock_periodo_modelo, df_envios_periodo_modelo,
+                      on=['modelo', 'color'])
 
-df_missing_categ_periodo = get_missing_categ(df_categ_desc, df_periodo_categ, path_save=path_save, file_name=name_save_missing_categories_periodo)
+    df_periodo_feature = pd.merge(df_periodo,
+                      df_categ_all[['modelo', 'color', 'categoria_num',
+                                    'largura', 'down_part_type', 'color_categ', 'precio', 'categoria_desc', 'precio_catalogo']],
+                      on=['modelo', 'color'], how='left')
 
-# plot
 
+
+    df_periodo_feature['modelo_num'] = df_periodo_feature['modelo']
+
+    df_periodo_categ = df_periodo_feature.groupby(['categoria_num',
+                                        'categoria_desc']).agg({'down_part_type': 'last',
+                                                                'color_categ': 'last',
+                                                                'precio': 'last',
+                                                                'largura': 'last',
+                                                                'modelo_num': 'count',
+                                                                'modelo': lambda x: list(set(x)),
+                                                                'purchased': 'sum',
+                                                                'envios': 'sum',
+                                                                'envios_co': 'sum',
+                                                                'precio_catalogo': 'mean'}).reset_index()
+
+    # revenue: envíos * acierto * precio medio
+    df_periodo_categ['revenue'] = df_periodo_categ['purchased'] * df_periodo_categ['precio_catalogo']
+
+    # missing categories
+    # TODO: missing distinguish
+
+    # careg_object_text = 'periodo_' + date_start_str_save + '_' + date_end_str_save
+
+    careg_object_text = 'temporada_' + str(season_number)
+    name_save_missing_categories_periodo = family_desc_value + '_categorias_que_faltan_' + careg_object_text + '.xlsx'
+    path_save_periodo = os.path.join(path_save, family_desc_value + '_categorias_' + careg_object_text)
+
+    # df_categ_desc, df_categ_gr, df_categ_periodo = None
+    df_missing_categ_periodo = get_missing_categ(df_categ_desc, df_categ_gr, df_periodo_categ, path_save=path_save_periodo,
+                                                 file_name=name_save_missing_categories_periodo)
+
+    # df_missing_categ_periodo = get_missing_categ(df_categ_gr, df_periodo_categ, path_save=path_save_periodo,
+    #                                              file_name=name_save_missing_categories_periodo)
+
+    # df_missing_categ_periodo = get_missing_categ(df_categ_desc, df_periodo_categ, path_save=path_save_periodo,
+    #                                              file_name=name_save_missing_categories_periodo)
+
+
+    # name_save_missing_categories_periodo = family_desc_value + '_categorias_que_faltan1_' + careg_object_text + '.xlsx'
+
+
+
+
+    # plot
+
+
+
+
+
+    value_list = ['modelo_num', 'purchased', 'envios', 'revenue'] # , 'purchased_por_precio_medio'
+    # careg_object_text = 'stock_' + date_start_str_save + '_' + date_end_str_save
+
+    for plot_value in value_list:
+        print(plot_value)
+        for order_list in plot_order_list:
+
+            plot_title_text = family_desc_value + '<br>' + careg_object_text.replace('_', ' ') + '<br>' + plot_value.replace('_', ' ')
+            order_list_save = '_'.join(order_list)
+            print('Plotting sunburst for ' + family_desc_value + ' for order ' + order_list_save)
+            plot_name_save = 'sunburst_categor_' + family_desc_value + '_' + careg_object_text + '_' + plot_value + '_' + order_list_save
+            plot_sunburst(df_periodo_categ, order_list, plot_value, plot_title_text, path_save_periodo, plot_name_save)
 
 ##############################################3
 
@@ -800,3 +884,51 @@ fig.show()
 df_categ_gr['link'] = '<img src="https://s3-eu-west-1.amazonaws.com/catalogo.labs/C1123/C1123C9.jpg" />'
 
 df['link'] = '![imagen](https://s3-eu-west-1.amazonaws.com/catalogo.labs/C1123/C1123C9.jpg)'
+
+
+
+######################################################################################################################
+# Wide Eyes
+
+
+file_we = '/var/lib/lookiero/stock/stock_tool/wide_eyes_20210504.csv.gz'
+
+
+df_we = pd.read_csv(file_we)
+
+# WE ejemplo
+
+df_we_test = pd.DataFrame({"product_variant_id": "e5806967-5e81-4a52-abfb-9c52f216e57d", "distance_vector": {"e5806967-5e81-4a52-abfb-9c52f216e57d": 0, "6ed1e576-2ee2-4711-924f-3a03956c3d15": 0.07318007946014404, "7aa694b6-779b-4894-a1a0-97e890b90be4": 0.0994342565536499, "19a476cd-0516-4de8-a3ba-b50879e94276": 0.10089927911758423, "0c1db538-65c4-4d69-8c93-dd2b208e0b43": 0.10904598236083984, "505e3c2c-3bc4-47ed-9ebe-764e9c3faa51": 0.1154322624206543, "5b9acbe9-e8c4-4de6-b036-28180e2dce99": 0.12051546573638916, "7f862373-32ac-47ec-9e9b-93054719aa6c": 0.12643033266067505, "909a5618-fca9-4d23-996c-ed07ab2b90c1": 0.13084381818771362, "d8a5cba4-7044-4a7e-b05c-ce6ab7482929": 0.13084381818771362, "ecd9e061-9b5b-4698-aff5-67a73432ce06": 0.13248717784881592, "22a80c27-d4cd-4747-b772-038d935ad61b": 0.13362640142440796, "237faf2b-015f-42c8-b9ee-f955da9158d9": 0.13687443733215332, "90a3d48c-74d4-4069-9371-ca7e96008e84": 0.14010578393936157, "d708a454-b090-4241-8c78-85d28b6e27af": 0.14084315299987793, "ff35c68f-e32a-4e20-8ca3-1c29e34a1bff": 0.14368534088134766, "45ff4cbc-adae-40f8-9484-7e376e08ab85": 0.1453608274459839, "3f575b1b-0986-4c95-ba06-1e4b7ae60b9e": 0.14585870504379272, "2ec1089a-9ebc-4090-86e0-ffe3233eb08c": 0.14607441425323486, "4b799b67-269e-4b01-a27c-eede368243ee": 0.14616739749908447, "444e066f-533e-4d5a-9de5-8cecc6e33bac": 0.1472773551940918, "fc7fdc73-58c4-464f-a183-267bb6191b0f": 0.14758121967315674, "38416bf6-730d-49f2-ac35-fb5f8fb7dc78": 0.14868903160095215, "fa8dc096-d349-4293-a33d-deacdf83c18e": 0.14923936128616333, "347dfaa2-47ba-4913-b797-76ba7a760020": 0.15039020776748657, "c11db38b-3e5f-4c3a-9f6b-1d39d6ffdb55": 0.1509099006652832, "c6d86f9f-d991-4568-b02c-f0fd283ff643": 0.15116196870803833, "92ce6ebe-714d-4ba7-89c0-ea463f7c7e96": 0.15126138925552368, "1219e3e2-3d22-4f7e-84bb-8601e6a3ef2d": 0.15157252550125122, "11c5cf82-d83d-475d-8ee1-caab6ca2bf27": 0.15179651975631714, "5bf9f0be-9fd0-44f8-b40d-4cd5a0ba3d25": 0.15202653408050537, "d8381a44-faa7-4399-9427-967e00803f06": 0.15331977605819702, "1bc4989d-a7c5-423b-b5ef-7d0479c5e9ce": 0.15338557958602905, "2f570086-7497-4b1f-84ea-4566fd3921ef": 0.1537257432937622, "a95b1013-544b-4c7a-91a3-75404d63232d": 0.15498435497283936, "1a937429-f517-4410-984d-6cfb419f012e": 0.15543591976165771, "7ccb433d-d9cf-4221-886b-7758c7487e65": 0.15589392185211182, "5174491a-7929-430a-a73a-827f21011d89": 0.15596812963485718}}).reset_index()
+
+
+df_we_test = df_we_test.rename(columns={'index': 'product_id_j', 'product_variant_id': 'product_id_i'})
+df_id_modelo = pd.read_csv('/home/darya/Documents/Reports/2021-05-04-WideEyes/comments_data_tab.csv', error_bad_lines=False, sep=';')
+df_id_modelo = df_id_modelo.rename(columns={'id': 'product_id_j'})
+df_modelo_dist = pd.merge(df_we_test, df_id_modelo,
+                          on='product_id_j', how='left')
+
+def get_image_url(modelo, color):
+    image_url = '=IMAGE("https://s3-eu-west-1.amazonaws.com/catalogo.labs/' + modelo + '/' + modelo + color +'.jpg")'
+    return image_url
+
+df_modelo_dist['product_image_j'] = df_modelo_dist.apply(lambda x: get_image_url(x['_group_id'], x['color']), axis=1)
+
+image_i = df_modelo_dist[df_modelo_dist['product_id_j'] == df_modelo_dist['product_id_i'][0]]['product_image_j']
+
+df_modelo_dist['product_image_i'] = image_i.iloc[0]
+
+
+df_save = df_modelo_dist[['product_image_i', 'product_image_j', 'distance_vector']].sort_values('distance_vector')
+
+df_save.to_excel('/home/darya/Documents/Reports/2021-05-04-WideEyes/we_dress_similarity_test.xlsx')
+
+df['col_3'] = df.apply(lambda x: f(x.col_1, x.col_2), axis=1)
+
+
+writer = pd.ExcelWriter('output.xlsx')
+s.to_excel(writer, 'Sheet1', header=False, index=False)
+writer.save()
+
+
+
+
