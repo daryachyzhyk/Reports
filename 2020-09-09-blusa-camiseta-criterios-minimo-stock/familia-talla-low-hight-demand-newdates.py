@@ -108,22 +108,27 @@ file_demanda = ('/var/lib/lookiero/stock/stock_tool/demanda_preprocessed.csv.gz'
 file_product = ('/var/lib/lookiero/stock/stock_tool/productos_preprocessed.csv.gz')
 file_stock = ('/var/lib/lookiero/stock/stock_tool/stock.csv.gz')
 
-path_results = ('/home/darya/Documents/Reports/2020-09-09-blusa-camiseta-criterios-minimo-stock')
+# path_results = ('/home/darya/Documents/Reports/2020-09-09-blusa-camiseta-criterios-minimo-stock')
+path_results = '/var/lib/lookiero/stock/stock_tool/variedad'
 
-file_feedback = ('/home/darya/Documents/Reports/2020-09-09-blusa-camiseta-criterios-minimo-stock/Stock_Situacion.csv')
+# file_feedback = ('/home/darya/Documents/Reports/2020-09-09-blusa-camiseta-criterios-minimo-stock/Stock_Situacion.csv')
 
 ######################################################################################################################
 # feedback
-df_feedback = pd.read_csv(file_feedback, usecols=['Familia', 'Talla', 'Fecha'])
+# df_feedback = pd.read_csv(file_feedback, usecols=['Familia', 'Talla', 'Fecha'])
+#
+# df_feedback = df_feedback.rename(columns={'Familia': 'family_desc',
+#                                           'Talla': 'size',
+#                                           'Fecha': 'date'})
+#
+# family_list = list(set(df_feedback['family_desc']))
 
-df_feedback = df_feedback.rename(columns={'Familia': 'family_desc',
-                                          'Talla': 'size',
-                                          'Fecha': 'date'})
 
-family_list = list(set(df_feedback['family_desc']))
+# date_start_str = df_feedback['date'].iloc[0]
+family_list = ['CHAQUETA', 'PANTALON', 'JUMPSUIT', 'PARKA', 'BLUSA', 'SHORT', 'CARDIGAN ', 'SUDADERA', 'ABRIGO',
+               'VESTIDO', 'TRENCH', 'CAMISETA', 'DENIM', 'TOP ', 'FALDA', 'JERSEY']
 
-
-date_start_str = df_feedback['date'].iloc[0]
+date_start_str = '2020-07-24'
 
 date_end_str = datetime.date.today().strftime('%Y-%m-%d')
 
@@ -189,7 +194,7 @@ var_list_cat = ['clima',
                 'price_range_product',
                 # 'tejido',
                 'acabado',
-                # TODO: añadir premium
+                # premium
                 #'premium',
                 # 'corte',
                 # 'grosor',
@@ -222,7 +227,11 @@ df = df[df['family_desc'].isin(family_list)]
 df['stock_actual'] = df['real_stock']
 df.loc[df['stock_actual'] < df['demanda'], 'stock_actual'] = df['demanda']
 
-date_family_size_list = list(zip(df_feedback['date'], df_feedback['family_desc'], df_feedback['size']))
+# date_family_size_list = list(zip(df_feedback['date'], df_feedback['family_desc'], df_feedback['size']))
+df_comb = df[['date', 'family_desc', 'size']].drop_duplicates()
+
+date_family_size_list = list(zip(df_comb['date'], df_comb['family_desc'], df_comb['size']))
+# date_family_size_list = list(zip(df['date'], df['family_desc'], df['size']))
 
 #################################3
 # test
@@ -267,6 +276,6 @@ df_indicators.to_csv(os.path.join(path_results, 'date_family_size_var_mean_weigh
 
 df_indicators_gr.to_csv(os.path.join(path_results, 'date_family_size_mean_var_mean_weight_relat_abs_psfeedback_' + date_save + '.csv'), index=False)
 
-
+print('Finish')
 
 
