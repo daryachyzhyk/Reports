@@ -133,6 +133,13 @@ df_categ_gr = df_categ_all.groupby(['categoria_num',
                                                             'imagen_prenda': 'last'}).reset_index()
 
 df_categ_gr['modelo_pct'] = df_categ_gr['modelo_num'] * 100 / df_categ_gr['modelo_num'].sum()
+
+family_desc = 'DENIM'
+df_categ_all_save = df_categ_all[['modelo', 'color'] + list(dic_category.keys()) + ['categoria_desc', 'categoria_num',
+                                                                                    'imagen_prenda']]
+df_categ_all_save.to_excel(os.path.join(path_save, family_desc + '_modelo_color_categoria.xlsx'), index=False, options={'encoding':'utf-8'})
+
+
 # df_categ_gr.to_excel(os.path.join(path_save, 'denim_categorias.xlsx'))
 
 # largira
@@ -441,6 +448,88 @@ for season_number in list(range(1, 12)): # list(range(1, 12))  [4, 9, 10, 11]
             print('Plotting sunburst for ' + family_desc_value + ' for order ' + order_list_save)
             plot_name_save = 'sunburst_categor_' + family_desc_value + '_' + careg_object_text + '_' + plot_value + '_' + order_list_save
             plot_sunburst(df_periodo_categ, order_list, plot_value, plot_title_text, path_save_periodo, plot_name_save)
+
+##############################################
+# Nucleo y tendencia
+
+# nucleo, reposicion
+
+
+
+import pandas as pd
+import numpy as np
+import itertools
+import os
+import plotly
+import plotly.express as px
+plotly.io.renderers.default = "browser"
+
+file_modelos_features = '/home/darya/Documents/Reports/2021-02-23-client-categorization/Features_value_denim_jeans.xlsx'
+file_product = '/var/lib/lookiero/stock/stock_tool/productos_preprocessed.csv.gz'
+
+path_save = '/home/darya/Documents/Reports/2021-02-23-client-categorization'
+
+family_desc_value = 'DENIM'
+
+df_modelos_raw = pd.read_excel(file_modelos_features, index_col=0)
+
+list_modelo = list(set(df_modelos_raw['modelo']))
+query_text = 'modelo in @list_modelo'
+df_product_repo = pd.read_csv(file_product, usecols=['reference', 'modelo', 'color', 'is_repo']).query(query_text) # , usecols=['modelo', 'precio_catalogo', 'color']
+
+
+df_product_repo['temporada'] = df_product_repo['reference'].str.extract('(\d+)')
+
+df_product_repo = df_product_repo.drop_duplicates(subset=['modelo', 'color', 'temporada'])
+
+
+df_modelo_color_categ = pd.read_excel(os.path.join(path_save, family_desc_value + '_modelo_color_categoria.xlsx'))
+
+df_nucleo_careg_all = pd.merge(df_product_repo, df_modelo_color_categ, on=['modelo', 'color'], how='left')
+
+df_nucleo_careg_all['not_repo'] = np.logical_not(df_nucleo_careg_all['is_repo'])
+df_nucleo_careg_all['is_repo_count'] = df_nucleo_careg_all['is_repo'].copy()
+df_nucleo_careg_all['modelo_color_num'] = 1
+
+# TODO: separar repo y no repo
+
+df_nucleo_careg_gr = df_nucleo_careg_all.groupby(['categoria_desc', 'categoria_num']).agg({'down_part_type': 'last',
+                                                                                           'color_categ': 'last',
+                                                                                           'precio': 'last',
+                                                                                           'largura': 'last',
+                                                                                           'is_repo': 'sum',
+                                                                                           'not_repo': 'sum',
+                                                                                           'is_repo_count': 'count',
+                                                                                           'modelo_color_num':'sum'}).reset_index()
+
+df_nucleo_careg_gr['is_repo_pct'] = df_nucleo_careg_gr['is_repo'] / df_nucleo_careg_gr['is_repo_count']
+df_nucleo_careg_gr['modelo_color_pct'] = df_nucleo_careg_gr['is_repo_count'] / df_nucleo_careg_gr.shape[0]
+df_nucleo_careg_gr = df_nucleo_careg_gr.sort_values(['is_repo_pct', 'modelo_color_num'], ascending=False)
+
+df_nucleo_careg_gr[['is_repo', 'not_repo']] = df_nucleo_careg_gr[['is_repo', 'not_repo']].astype(int)
+df_nucleo_careg_gr = df_nucleo_careg_gr[['categoria_num', 'categoria_desc', 'down_part_type', 'color_categ',
+                                         'precio', 'largura', 'is_repo_pct', 'modelo_color_pct', 'modelo_color_num',
+                                         'is_repo', 'not_repo', 'is_repo_count']]
+
+
+for plot_value in ['is_repo', 'not_repo']:
+    careg_object_text = 'stock_historico'
+    path_save_periodo = '/home/darya/Documents/Reports/2021-02-23-client-categorization/DENIM_noos'
+    print(plot_value)
+
+    plot_order_list = [['down_part_type', 'precio', 'color_categ', 'largura'],
+                       ['largura', 'down_part_type', 'precio', 'color_categ'],
+                       ['precio', 'down_part_type', 'largura', 'color_categ'],
+                       ['color_categ', 'down_part_type', 'precio', 'largura']]
+
+    for order_list in plot_order_list:
+
+        plot_title_text = family_desc_value + '<br>' + careg_object_text.replace('_', ' ') + '<br>' + plot_value.replace('_', ' ')
+        order_list_save = '_'.join(order_list)
+        print('Plotting sunburst for ' + family_desc_value + ' for order ' + order_list_save)
+        plot_name_save = 'sunburst_categor_' + family_desc_value + '_' + careg_object_text + '_' + plot_value + '_' + order_list_save
+        plot_sunburst(df_nucleo_careg_gr, order_list, plot_value, plot_title_text, path_save_periodo, plot_name_save)
+
 
 ##############################################3
 
