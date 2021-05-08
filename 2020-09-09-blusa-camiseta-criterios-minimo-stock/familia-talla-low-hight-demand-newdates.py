@@ -18,6 +18,7 @@ import pandas as pd
 import numpy as np
 import datetime
 from joblib import Parallel, delayed, parallel_backend
+import itertools
 
 
 def opt_sum(opt, df_opt_dummy):
@@ -125,12 +126,14 @@ path_results = '/var/lib/lookiero/stock/stock_tool/variedad'
 
 
 # date_start_str = df_feedback['date'].iloc[0]
-family_list = ['CHAQUETA', 'PANTALON', 'JUMPSUIT', 'PARKA', 'BLUSA', 'SHORT', 'CARDIGAN ', 'SUDADERA', 'ABRIGO',
-               'VESTIDO', 'TRENCH', 'CAMISETA', 'DENIM', 'TOP ', 'FALDA', 'JERSEY']
+# family_list = ['CHAQUETA', 'PANTALON', 'JUMPSUIT', 'PARKA', 'BLUSA', 'SHORT', 'CARDIGAN ', 'SUDADERA', 'ABRIGO',
+#                'VESTIDO', 'TRENCH', 'CAMISETA', 'DENIM', 'TOP ', 'FALDA', 'JERSEY']
 
 date_start_str = '2020-07-24'
 
 date_end_str = datetime.date.today().strftime('%Y-%m-%d')
+
+
 
 date_list = [d.strftime('%Y-%m-%d') for d in pd.bdate_range(date_start_str, date_end_str)]
 
@@ -141,7 +144,8 @@ date_list = [d.strftime('%Y-%m-%d') for d in pd.bdate_range(date_start_str, date
 ######################################################################################################################
 # demanda
 
-query_demanda_text = 'date_ps_done in @date_list and family_desc in @family_list'
+# query_demanda_text = 'date_ps_done in @date_list and family_desc in @family_list'
+query_demanda_text = 'date_ps_done in @date_list'
 
 df_demanda_raw = pd.read_csv(file_demanda,
                              usecols=['reference', 'date_ps_done', 'family_desc']).query(query_demanda_text)
@@ -151,6 +155,7 @@ reference_list = list(set(df_demanda_raw['reference'].to_list()))
 df_demanda = df_demanda_raw.groupby(['date_ps_done', 'reference']).size().reset_index(name='demanda')
 
 df_demanda = df_demanda.rename(columns={'date_ps_done': 'date'})
+
 
 ######################################################################################################################
 # stock
@@ -172,6 +177,8 @@ df_demanda_stock = pd.merge(df_demanda,
 
 df_demanda_stock['real_stock'] = df_demanda_stock['real_stock'].fillna(0)
 df_demanda_stock['demanda'] = df_demanda_stock['demanda'].fillna(0)
+
+
 
 ######################################################################################################################
 # add description of the product
@@ -219,8 +226,10 @@ df = pd.merge(df_demanda_stock,
               on=['reference'],
               how='outer')
 
+family_list = df['family_desc'].unique().tolist()
+size_list = df['size'].unique().tolist()
 
-df = df[df['family_desc'].isin(family_list)]
+# df = df[df['family_desc'].isin(family_list)]
 
 # stock actual
 
@@ -228,9 +237,17 @@ df['stock_actual'] = df['real_stock']
 df.loc[df['stock_actual'] < df['demanda'], 'stock_actual'] = df['demanda']
 
 # date_family_size_list = list(zip(df_feedback['date'], df_feedback['family_desc'], df_feedback['size']))
+
+# list_date = [1, 2, 3]
+# list_family = [4, 5]
+# list_size = [6, 7, 8, 9]
+date_family_size_list = list(itertools.product(*[date_list, family_list, size_list]))
+
+
 df_comb = df[['date', 'family_desc', 'size']].drop_duplicates()
 
-date_family_size_list = list(zip(df_comb['date'], df_comb['family_desc'], df_comb['size']))
+# date_family_size_list = list(zip(df_comb['date'], df_comb['family_desc'], df_comb['size']))
+
 # date_family_size_list = list(zip(df['date'], df['family_desc'], df['size']))
 
 #################################3
@@ -277,5 +294,14 @@ df_indicators.to_csv(os.path.join(path_results, 'date_family_size_var_mean_weigh
 df_indicators_gr.to_csv(os.path.join(path_results, 'date_family_size_mean_var_mean_weight_relat_abs_psfeedback_' + date_save + '.csv'), index=False)
 
 print('Finish')
+
+
+# test
+# df_test = df_comb[df_comb['family_desc'] == 'CARDIGAN']
+#
+# query_demanda_text = 'date_ps_done in @date_list'
+#
+# df_demanda_test = pd.read_csv(file_demanda,
+#                              usecols=['reference', 'date_ps_done', 'family_desc']).query(query_demanda_text)
 
 
