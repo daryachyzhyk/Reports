@@ -1,4 +1,5 @@
-'''Two families: BLUSA and CAMISETA do not follow the rule of the minimum of stock that we establish on the level family-size. They have a good level of stock but the PS feedback is bad.
+'''Two families: BLUSA and CAMISETA do not follow the rule of the minimum of stock that we establish on the level family-size.
+They have a good level of stock but the PS feedback is bad.
 
 Investigate these families using another variables such as: color, print, basic, style, fabric, etc.
 
@@ -34,6 +35,7 @@ def opt_sum(opt, df_opt_dummy):
 def var_loop(var, df_fam_sz_var):
 
     if ~df_fam_sz_var[var].isnull().all():
+
         # dummies
 
         df_dummy = pd.get_dummies(df_fam_sz_var[var], columns=var)
@@ -71,8 +73,9 @@ def var_loop(var, df_fam_sz_var):
     return date_family_size_var_valor_tuple
 
 
-def get_var_distr_relat_abs(date_family_size, df):
+def get_var_distr_relat_abs(date_family_size, df, path_save):
     # date_family_size = date_family_size_list[0]
+    path_save = os.path.join(path_save, 'temp')
 
 
     dt = date_family_size[0]
@@ -98,6 +101,11 @@ def get_var_distr_relat_abs(date_family_size, df):
     df_date_family_size_var_valor['family_desc'] = family
     df_date_family_size_var_valor['size'] = sz
     df_date_family_size_var_valor = df_date_family_size_var_valor.dropna()
+
+    if not os.path.exists(path_save):
+        os.makedirs(path_save)
+    df_date_family_size_var_valor.to_csv(os.path.join(path_save,
+                                                      str(dt) + '_' + str(family) + '_' + str(sz) + '.csv'))
 
     return df_date_family_size_var_valor
 
@@ -129,11 +137,11 @@ path_results = '/var/lib/lookiero/stock/stock_tool/variedad'
 # family_list = ['CHAQUETA', 'PANTALON', 'JUMPSUIT', 'PARKA', 'BLUSA', 'SHORT', 'CARDIGAN ', 'SUDADERA', 'ABRIGO',
 #                'VESTIDO', 'TRENCH', 'CAMISETA', 'DENIM', 'TOP ', 'FALDA', 'JERSEY']
 
-date_start_str = '2020-07-24'
+# date_start_str = '2020-07-24'
+
+date_start_str = '2020-11-20'
 
 date_end_str = datetime.date.today().strftime('%Y-%m-%d')
-
-
 
 date_list = [d.strftime('%Y-%m-%d') for d in pd.bdate_range(date_start_str, date_end_str)]
 
@@ -245,6 +253,7 @@ date_family_size_list = list(itertools.product(*[date_list, family_list, size_li
 
 
 df_comb = df[['date', 'family_desc', 'size']].drop_duplicates()
+df_comb = df_comb.dropna()
 
 # date_family_size_list = list(zip(df_comb['date'], df_comb['family_desc'], df_comb['size']))
 
@@ -268,7 +277,7 @@ df_comb = df[['date', 'family_desc', 'size']].drop_duplicates()
 
 with parallel_backend('threading', n_jobs=6):
     date_family_size_var_valor_list = Parallel()(
-        delayed(get_var_distr_relat_abs)(date_family_size, df) for date_family_size in date_family_size_list)
+        delayed(get_var_distr_relat_abs)(date_family_size, df, path_results) for date_family_size in date_family_size_list)
 
 df_indicators = pd.concat(date_family_size_var_valor_list)
 
@@ -294,6 +303,39 @@ df_indicators.to_csv(os.path.join(path_results, 'date_family_size_var_mean_weigh
 df_indicators_gr.to_csv(os.path.join(path_results, 'date_family_size_mean_var_mean_weight_relat_abs_psfeedback_' + date_save + '.csv'), index=False)
 
 print('Finish')
+
+
+
+
+
+# from temp
+
+
+path_temp = '/var/lib/lookiero/stock/stock_tool/variedad/temp'
+path_results = '/var/lib/lookiero/stock/stock_tool/variedad'
+
+import glob
+
+all_files = glob.glob(path_temp + "/*.csv")
+
+list_df_i = []
+
+for filename in all_files:
+    df_i = pd.read_csv(filename, index_col=0, header=0)
+    list_df_i.append(df_i)
+
+df_date_fam_size_all = pd.concat(list_df_i, axis=0, ignore_index=True)
+
+df_date_fam_size_all = df_date_fam_size_all.sort_values(['date', 'family_desc'])
+
+# df_date_fam_size_all[''] = df_date_fam_size_all[''].fillna(0)
+# df_date_fam_size_all['family_desc'].value_counts(dropna=False)
+#
+# df_date_fam_size_all[''] = df_date_fam_size_all[''].fillna(0)
+
+date_save = df_date_fam_size_all['date'].max()
+df_date_fam_size_all.to_csv(os.path.join(path_results, 'date_family_size_mean_var_mean_weight_relat_abs_psfeedback_' + date_save + '.csv'), index=False)
+
 
 
 # test
